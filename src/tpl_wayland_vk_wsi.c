@@ -290,7 +290,8 @@ __tpl_wayland_vk_wsi_surface_fini(tpl_surface_t *surface)
 static tpl_result_t
 __tpl_wayland_vk_wsi_surface_enqueue_buffer(tpl_surface_t *surface,
 		tbm_surface_h tbm_surface,
-		int num_rects, const int *rects)
+		int num_rects, const int *rects,
+		tbm_sync_fence_h sync_fence)
 {
 	struct wl_surface *wl_sfc = NULL;
 	struct wl_callback *frame_callback = NULL;
@@ -364,7 +365,8 @@ __tpl_wayland_vk_wsi_surface_validate(tpl_surface_t *surface)
 }
 
 static tbm_surface_h
-__tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface)
+__tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
+											uint64_t timeout_ns, tbm_sync_fence_h *sync_fence)
 {
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
@@ -378,6 +380,9 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface)
 		(tpl_wayland_vk_wsi_display_t *)surface->display->backend.data;
 	struct wl_proxy *wl_proxy = NULL;
 	tbm_surface_queue_error_e tsq_err = 0;
+
+	if (sync_fence)
+		*sync_fence = NULL;
 
 	TPL_OBJECT_UNLOCK(surface);
 	while (tbm_surface_queue_can_dequeue(
