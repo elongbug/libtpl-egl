@@ -675,6 +675,8 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 	tpl_wayland_egl_buffer_t *wayland_egl_buffer = NULL;
 	tbm_surface_queue_error_e tsq_err;
 
+	if (!wayland_egl_surface) return TPL_ERROR_INVALID_PARAMETER;
+
 	if (!tbm_surface_internal_is_valid(tbm_surface)) {
 		TPL_ERR("Failed to enqueue tbm_surface(%p) Invalid value.",
 				tbm_surface);
@@ -699,6 +701,8 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 
 	wayland_egl_buffer =
 		__tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(tbm_surface);
+
+	if (!wayland_egl_buffer) return TPL_ERROR_INVALID_PARAMETER;
 
 	if (wayland_egl_buffer->reset)
 	{
