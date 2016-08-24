@@ -335,7 +335,7 @@ __tpl_gbm_surface_fini(tpl_surface_t *surface)
 static tpl_result_t
 __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 								 tbm_surface_h tbm_surface, int num_rects,
-								 const int *rects, tbm_sync_fence_h sync_fence)
+								 const int *rects, tbm_fd sync_fence)
 {
 	tbm_bo bo;
 
@@ -373,6 +373,11 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
+	if (sync_fence != -1) {
+		tbm_sync_fence_wait(sync_fence, -1);
+		close(sync_fence);
+	}
+
 	if (tbm_surface_queue_enqueue(gbm_surface->tbm_queue, tbm_surface)
 			!= TBM_SURFACE_QUEUE_ERROR_NONE) {
 		TPL_ERR("tbm_surface_queue_enqueue failed. tbm_surface_queue(%p) tbm_surface(%p)",
@@ -397,7 +402,7 @@ __tpl_gbm_surface_validate(tpl_surface_t *surface)
 
 static tbm_surface_h
 __tpl_gbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
-								 tbm_sync_fence_h *sync_fence)
+								 tbm_fd *sync_fence)
 {
 	tbm_bo bo;
 	tbm_surface_h tbm_surface = NULL;
@@ -412,7 +417,7 @@ __tpl_gbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	TPL_ASSERT(surface->display->native_handle);
 
 	if (sync_fence)
-		*sync_fence = NULL;
+		*sync_fence = -1;
 
 	gbm_surface = (tpl_gbm_surface_t *)surface->backend.data;
 

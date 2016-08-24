@@ -186,7 +186,7 @@ tpl_surface_dequeue_buffer(tpl_surface_t *surface)
 
 tbm_surface_h
 tpl_surface_dequeue_buffer_with_sync(tpl_surface_t *surface, uint64_t timeout_ns,
-									 tbm_sync_fence_h *sync_fence)
+									 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
 
@@ -230,7 +230,7 @@ tpl_result_t
 tpl_surface_enqueue_buffer(tpl_surface_t *surface, tbm_surface_h tbm_surface)
 {
 	return tpl_surface_enqueue_buffer_with_damage_and_sync(surface, tbm_surface,
-														   0, NULL, NULL);
+														   0, NULL, -1);
 }
 
 tpl_result_t
@@ -239,14 +239,14 @@ tpl_surface_enqueue_buffer_with_damage(tpl_surface_t *surface,
 									   int num_rects, const int *rects)
 {
 	return tpl_surface_enqueue_buffer_with_damage_and_sync(surface, tbm_surface,
-														   num_rects, rects, NULL);
+														   num_rects, rects, -1);
 }
 
 tpl_result_t
 tpl_surface_enqueue_buffer_with_damage_and_sync(tpl_surface_t *surface,
 												tbm_surface_h tbm_surface,
 												int num_rects, const int *rects,
-												tbm_sync_fence_h sync_fence)
+												tbm_fd sync_fence)
 {
 	tpl_result_t ret = TPL_ERROR_NONE;
 

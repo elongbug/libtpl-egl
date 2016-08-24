@@ -59,11 +59,11 @@ struct _tpl_wayland_vk_wsi_buffer {
 	tpl_display_t *display;
 	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface;
 	struct wl_proxy *wl_proxy;
-	tbm_sync_timeline_h sync_timeline;
+	tbm_fd sync_timeline;
 	unsigned int sync_timestamp;
 
 #if USE_WORKER_THREAD == 1
-	tbm_sync_fence_h wait_sync;
+	tbm_fd wait_sync;
 #endif
 };
 
@@ -368,7 +368,7 @@ static tpl_result_t
 __tpl_wayland_vk_wsi_surface_enqueue_buffer(tpl_surface_t *surface,
 		tbm_surface_h tbm_surface,
 		int num_rects, const int *rects,
-		tbm_sync_fence_h sync_fence)
+		tbm_fd sync_fence)
 {
 
 	TPL_ASSERT(surface);
@@ -414,13 +414,12 @@ __tpl_wayland_vk_wsi_surface_enqueue_buffer(tpl_surface_t *surface,
 	}
 
 #if USE_WORKER_THREAD == 0
-	if (sync_fence != NULL) {
+	if (sync_fence != -1) {
 		/* non worker thread mode */
-		tbm_sync_error_e sync_err;
-		sync_err = tbm_sync_fence_wait(sync_fence, -1);
-		if (sync_err != TBM_SYNC_ERROR_NONE)
-			TPL_ERR("Failed to wait sync. | error: %d", errno);
-		tbm_sync_fence_destroy(sync_fence);
+		/* TODO: set max wait time */
+		if (tbm_sync_fence_wait(sync_fence, -1) != 1)
+			TPL_ERR("Failed to wait sync. | error: %d(%s)", errno, strerror(errno));
+		close(sync_fence);
 	}
 
 	tsq_err = tbm_surface_queue_acquire(wayland_vk_wsi_surface->tbm_queue,
@@ -464,7 +463,7 @@ __tpl_wayland_vk_wsi_surface_validate(tpl_surface_t *surface)
 
 static tbm_surface_h
 __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
-											uint64_t timeout_ns, tbm_sync_fence_h *sync_fence)
+											uint64_t timeout_ns, tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
@@ -478,10 +477,9 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
 		(tpl_wayland_vk_wsi_display_t *)surface->display->backend.data;
 	struct wl_proxy *wl_proxy = NULL;
 	tbm_surface_queue_error_e tsq_err = 0;
-	tbm_sync_error_e sync_err;
 
 	if (sync_fence)
-		*sync_fence = NULL;
+		*sync_fence = -1;
 
 #if USE_WORKER_THREAD == 0
 	TPL_OBJECT_UNLOCK(surface);
@@ -553,14 +551,11 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
 						 tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
 				*sync_fence = tbm_sync_fence_create(wayland_vk_wsi_buffer->sync_timeline,
 													name,
-													wayland_vk_wsi_buffer->sync_timestamp,
-													&sync_err);
-				if (*sync_fence == NULL || sync_err != TBM_SYNC_ERROR_NONE) {
-					TPL_ERR("Failed to create TBM sync fence!");
-					/* ??? destroy and return NULL */
-				}
+													wayland_vk_wsi_buffer->sync_timestamp);
+				if (*sync_fence == -1)
+					TPL_ERR("Failed to create TBM sync fence: %d(%s)", errno, strerror(errno));
 			} else {
-				*sync_fence = NULL;
+				*sync_fence = -1;
 			}
 		}
 		return tbm_surface;
@@ -585,10 +580,10 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
 
 	/* can change signaled sync */
 	if (sync_fence)
-		*sync_fence = NULL;
-	wayland_vk_wsi_buffer->sync_timeline = tbm_sync_timeline_create(&sync_err);
-	if (wayland_vk_wsi_buffer->sync_timeline == NULL || sync_err != TBM_SYNC_ERROR_NONE) {
-		TPL_ERR("Failed to create TBM sync timeline!");
+		*sync_fence = -1;
+	wayland_vk_wsi_buffer->sync_timeline = tbm_sync_timeline_create();
+	if (wayland_vk_wsi_buffer->sync_timeline == -1) {
+		TPL_ERR("Failed to create TBM sync timeline: %d(%s)", errno, strerror(errno));
 		wl_proxy_destroy(wl_proxy);
 		tbm_surface_internal_unref(tbm_surface);
 		free(wayland_vk_wsi_buffer);
@@ -788,8 +783,8 @@ __tpl_wayland_vk_wsi_buffer_free(tpl_wayland_vk_wsi_buffer_t
 		wayland_tbm_client_destroy_buffer(wayland_vk_wsi_display->wl_tbm_client,
 										  (void *)wayland_vk_wsi_buffer->wl_proxy);
 
-	if (wayland_vk_wsi_buffer->sync_timeline != NULL)
-		tbm_sync_timeline_destroy(wayland_vk_wsi_buffer->sync_timeline);
+	if (wayland_vk_wsi_buffer->sync_timeline != -1)
+		close(wayland_vk_wsi_buffer->sync_timeline);
 
 	free(wayland_vk_wsi_buffer);
 }
@@ -878,7 +873,6 @@ static const struct wl_callback_listener frame_listener = {
 static void
 __cb_client_buffer_release_callback(void *data, struct wl_proxy *proxy)
 {
-	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface = NULL;
 	tpl_wayland_vk_wsi_buffer_t *wayland_vk_wsi_buffer = NULL;
 	tbm_surface_h tbm_surface = NULL;
 
@@ -889,11 +883,8 @@ __cb_client_buffer_release_callback(void *data, struct wl_proxy *proxy)
 	wayland_vk_wsi_buffer =
 		__tpl_wayland_vk_wsi_get_wayland_buffer_from_tbm_surface(tbm_surface);
 
-	if (wayland_vk_wsi_buffer) {
-		wayland_vk_wsi_surface = wayland_vk_wsi_buffer->wayland_vk_wsi_surface;
-
+	if (wayland_vk_wsi_buffer)
 		tbm_surface_internal_unref(tbm_surface);
-	}
 }
 
 static const struct wl_buffer_listener buffer_release_listener = {
@@ -934,9 +925,8 @@ __tpl_wayland_vk_wsi_worker_thread_loop(void *arg)
 			ret = pthread_cond_timedwait(&wayland_vk_wsi_surface->dirty_queue_cond,
 										&wayland_vk_wsi_surface->dirty_queue_mutex,
 										&abs_time);
-			if (ret == ETIMEDOUT) {
+			if (ret == ETIMEDOUT)
 				timeout = TPL_TRUE;
-			}
 		}
 		if (timeout) {
 			pthread_mutex_unlock(&wayland_vk_wsi_surface->dirty_queue_mutex);
@@ -953,13 +943,11 @@ __tpl_wayland_vk_wsi_worker_thread_loop(void *arg)
 		wayland_vk_wsi_buffer =
 			__tpl_wayland_vk_wsi_get_wayland_buffer_from_tbm_surface(tbm_surface);
 		TPL_ASSERT(wayland_vk_wsi_buffer);
-		if (wayland_vk_wsi_buffer->wait_sync != NULL) {
-			tbm_sync_error_e sync_err;
-			sync_err = tbm_sync_fence_wait(wayland_vk_wsi_buffer->wait_sync, -1);
-			if (sync_err != TBM_SYNC_ERROR_NONE)
-				TPL_ERR("Failed to wait sync. | error: %d", errno);
-			tbm_sync_fence_destroy(wayland_vk_wsi_buffer->wait_sync);
-			wayland_vk_wsi_buffer->wait_sync = NULL;
+		if (wayland_vk_wsi_buffer->wait_sync != -1) {
+			if (tbm_sync_fence_wait(wayland_vk_wsi_buffer->wait_sync, -1) != 1)
+				TPL_ERR("Failed to wait sync. | error: %d(%s)", errno, strerror(errno));
+			close(wayland_vk_wsi_buffer->wait_sync);
+			wayland_vk_wsi_buffer->wait_sync = -1;
 		}
 
 		__tpl_wayland_vk_wsi_surface_commit_buffer(surface, tbm_surface);

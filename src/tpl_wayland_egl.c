@@ -664,7 +664,7 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 static tpl_result_t
 __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 		tbm_surface_h tbm_surface,
-		int num_rects, const int *rects, tbm_sync_fence_h sync_fence)
+		int num_rects, const int *rects, tbm_fd sync_fence)
 {
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
@@ -693,6 +693,11 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 
 	if (wayland_egl_surface->vblank_done == TPL_FALSE) {
 		__tpl_wayland_egl_surface_wait_vblank(surface);
+	}
+
+	if (sync_fence != -1) {
+		tbm_sync_fence_wait(sync_fence, -1);
+		close(sync_fence);
 	}
 
 	/* Stop tracking of this render_done tbm_surface. */
@@ -870,7 +875,7 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 
 static tbm_surface_h
 __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
-										 tbm_sync_fence_h *sync_fence)
+										 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
@@ -887,7 +892,7 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeou
 	tbm_surface_queue_error_e tsq_err = 0;
 
 	if (sync_fence)
-		*sync_fence = NULL;
+		*sync_fence = -1;
 
 	/* Check whether the surface was resized by wayland_egl */
 	if (wayland_egl_surface->resized == TPL_TRUE) {

@@ -477,7 +477,7 @@ tpl_surface_dequeue_buffer(tpl_surface_t *surface);
  */
 tbm_surface_h
 tpl_surface_dequeue_buffer_with_sync(tpl_surface_t *surface, uint64_t timeout_ns,
-									 tbm_sync_fence_h *sync_fence);
+									 tbm_fd *sync_fence);
 
 /**
  * Post a given tbm_surface.
@@ -553,7 +553,7 @@ tpl_result_t
 tpl_surface_enqueue_buffer_with_damage_and_sync(tpl_surface_t *surface,
 												tbm_surface_h tbm_surface,
 												int num_rects, const int *rects,
-												tbm_sync_fence_h sync_fence);
+												tbm_fd sync_fence);
 /**
  * Set frame interval of the given TPL surface.
  *
