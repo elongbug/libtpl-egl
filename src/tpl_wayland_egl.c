@@ -581,37 +581,13 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 static void
 __tpl_wayland_egl_surface_wait_vblank(tpl_surface_t *surface)
 {
-	int fd = -1;
 	tdm_error tdm_err = 0;
-	int ret;
-	struct pollfd fds;
-
 	tpl_wayland_egl_display_t *wayland_egl_display =
 		(tpl_wayland_egl_display_t*)surface->display->backend.data;
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
 		(tpl_wayland_egl_surface_t*)surface->backend.data;
 
-	tdm_err = tdm_client_get_fd(wayland_egl_display->tdm_client, &fd);
-
-	if (tdm_err != TDM_ERROR_NONE || fd < 0) {
-		TPL_ERR("Failed to tdm_client_get_fd | tdm_err = %d", tdm_err);
-	}
-
-	fds.events = POLLIN;
-	fds.fd = fd;
-	fds.revents = 0;
-
 	do {
-		ret = poll(&fds, 1, -1);
-
-		if (ret < 0) {
-			if (errno == EBUSY)
-				continue;
-			else {
-				TPL_ERR("Failed to poll.");
-			}
-		}
-
 		tdm_err = tdm_client_handle_events(wayland_egl_display->tdm_client);
 
 		if (tdm_err != TDM_ERROR_NONE) {
@@ -619,7 +595,6 @@ __tpl_wayland_egl_surface_wait_vblank(tpl_surface_t *surface)
 		}
 
 	} while (wayland_egl_surface->vblank_done == TPL_FALSE);
-
 }
 
 static void
