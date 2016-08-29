@@ -164,9 +164,10 @@ tpl_display_get_native_pixmap_info(tpl_display_t *display, tpl_handle_t pixmap,
 }
 
 tpl_result_t
-tpl_display_query_supported_buffer_count_from_native_window(tpl_display_t *display,
-															tpl_handle_t window,
-															int *min, int *max)
+tpl_display_query_supported_buffer_count_from_native_window(
+	tpl_display_t *display,
+	tpl_handle_t window,
+	int *min, int *max)
 {
 	if (!display->backend.query_window_supported_buffer_count) {
 		TPL_ERR("Backend for display has not been initialized!");
@@ -180,7 +181,7 @@ tpl_display_query_supported_buffer_count_from_native_window(tpl_display_t *displ
 
 tbm_surface_h
 tpl_display_get_buffer_from_native_pixmap(tpl_display_t *display,
-										  tpl_handle_t pixmap)
+		tpl_handle_t pixmap)
 {
 	if (!display->backend.get_buffer_from_native_pixmap) {
 		TPL_ERR("Backend for display has not been initialized!");

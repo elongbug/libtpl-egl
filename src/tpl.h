@@ -337,7 +337,8 @@ tpl_display_get_native_handle(tpl_display_t *display);
  * @return TPL_ERROR_NONE is the given config is supported, TPL_ERROR otherwise.
  */
 tpl_result_t
-tpl_display_query_config(tpl_display_t *display, tpl_surface_type_t surface_type,
+tpl_display_query_config(tpl_display_t *display,
+						 tpl_surface_type_t surface_type,
 						 int red_size, int green_size, int blue_size,
 						 int alpha_size, int depth_size, int *native_visual_id,
 						 tpl_bool_t *is_slow);
@@ -476,7 +477,8 @@ tpl_surface_dequeue_buffer(tpl_surface_t *surface);
  * @see tpl_surface_get_swapchain_buffers()
  */
 tbm_surface_h
-tpl_surface_dequeue_buffer_with_sync(tpl_surface_t *surface, uint64_t timeout_ns,
+tpl_surface_dequeue_buffer_with_sync(tpl_surface_t *surface,
+									 uint64_t timeout_ns,
 									 tbm_fd *sync_fence);
 
 /**
@@ -678,10 +680,9 @@ tpl_display_get_native_pixmap_info(tpl_display_t *display, tpl_handle_t pixmap,
  * @return TPL_ERROR_NONE if this function is supported and the window is valid, TPL_ERROR otherwise.
  */
 tpl_result_t
-tpl_display_query_supported_buffer_count_from_native_window(
-	tpl_display_t *display,
-	tpl_handle_t window,
-	int *min, int *max);
+tpl_display_query_supported_buffer_count_from_native_window(tpl_display_t *display,
+															tpl_handle_t window,
+															int *min, int *max);
 
 /**
  * Get native buffer from the given native pixmap.

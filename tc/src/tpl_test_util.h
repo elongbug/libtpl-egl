@@ -203,9 +203,9 @@ GfxUtilTimer	*tpl_test_util_timer_copy( GfxUtilTimer *src, const char *func,
 		int line, const char *msg );
 void		tpl_test_util_timer_list_clear( void );
 void		tpl_test_util_timer_begin( GfxUtilTimer *timer, const char *func,
-		int line, const char *msg );
+									   int line, const char *msg );
 void		tpl_test_util_timer_end( GfxUtilTimer *timer, const char *func, int line,
-		const char *msg );
+									 const char *msg );
 #else
 # define __TPL_TIMER_GLOBAL_BEGIN( ... ) { ; }
 # define __TPL_TIMER_GLOBAL_END( ... ) { ; }

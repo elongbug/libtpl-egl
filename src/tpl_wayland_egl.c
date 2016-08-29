@@ -150,17 +150,14 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 			goto free_wl_display;
 		}
 
-		if (env == NULL || atoi(env))
-		{
+		if (env == NULL || atoi(env)) {
 			TPL_LOG_B("WL_EGL", "[INIT] ENABLE wait vblank.");
 			wayland_egl_display->tdm_client = tdm_client_create(&tdm_err);
 			if (!wayland_egl_display->tdm_client) {
 				TPL_ERR("tdm client initialization failed! tdm_err=%d", tdm_err);
 				goto free_wl_display;
 			}
-		}
-		else
-		{
+		} else {
 			TPL_LOG_B("WL_EGL", "[INIT] DISABLE wait vblank.");
 			wayland_egl_display->tdm_client = NULL;
 		}
@@ -173,7 +170,7 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 	}
 
 	TPL_LOG_B("WL_EGL", "[INIT] tpl_wayland_egl_display_t(%p) wl_tbm_client(%p)",
-              wayland_egl_display, wayland_egl_display->wl_tbm_client);
+			  wayland_egl_display, wayland_egl_display->wl_tbm_client);
 
 	return TPL_ERROR_NONE;
 
@@ -325,8 +322,7 @@ __tpl_wayland_egl_buffer_set_reset_flag(tpl_list_t *tracking_list)
 	tbm_surface_h tbm_surface = NULL;
 	tpl_list_node_t *node = __tpl_list_get_front_node(tracking_list);
 
-	while (node)
-	{
+	while (node) {
 		tbm_surface = (tbm_surface_h) __tpl_list_node_get_data(node);
 
 		if (tbm_surface)
@@ -344,7 +340,8 @@ static void
 __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 									  void *data)
 {
-	tpl_wayland_egl_surface_t *wayland_egl_surface = (tpl_wayland_egl_surface_t*) data;
+	tpl_wayland_egl_surface_t *wayland_egl_surface =
+		(tpl_wayland_egl_surface_t *)data;
 
 	if (!wayland_egl_surface) return;
 
@@ -363,7 +360,8 @@ __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 }
 
 static tpl_result_t
-__tpl_wayland_egl_surface_create_vblank(tpl_wayland_egl_surface_t *wayland_egl_surface,
+__tpl_wayland_egl_surface_create_vblank(tpl_wayland_egl_surface_t
+										*wayland_egl_surface,
 										tdm_client *tdm_client)
 {
 	tdm_client_output *tdm_output = NULL;
@@ -378,7 +376,8 @@ __tpl_wayland_egl_surface_create_vblank(tpl_wayland_egl_surface_t *wayland_egl_s
 		return TPL_ERROR_INVALID_OPERATION;
 	}
 
-	wayland_egl_surface->tdm_vblank = tdm_client_output_create_vblank(tdm_output, &tdm_err_ret);
+	wayland_egl_surface->tdm_vblank =
+		tdm_client_output_create_vblank(tdm_output, &tdm_err_ret);
 	if (!wayland_egl_surface->tdm_vblank) {
 		TPL_ERR("Failed to create tdm vblank object. tdm_err(%d)", tdm_err_ret);
 		return TPL_ERROR_INVALID_OPERATION;
@@ -387,8 +386,9 @@ __tpl_wayland_egl_surface_create_vblank(tpl_wayland_egl_surface_t *wayland_egl_s
 	tdm_client_vblank_set_enable_fake(wayland_egl_surface->tdm_vblank, 1);
 	tdm_client_vblank_set_sync(wayland_egl_surface->tdm_vblank, 0);
 
-	TPL_LOG_B("WL_EGL", "[TDM_VBLANK_INIT] tpl_wayland_egl_surface_t(%p) tdm_vblank(%p)",
-			wayland_egl_surface, wayland_egl_surface->tdm_vblank);
+	TPL_LOG_B("WL_EGL",
+			  "[TDM_VBLANK_INIT] tpl_wayland_egl_surface_t(%p) tdm_vblank(%p)",
+			  wayland_egl_surface, wayland_egl_surface->tdm_vblank);
 
 	return TPL_ERROR_NONE;
 }
@@ -486,8 +486,9 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 	   for the case where the several surfaces is created in one display connection. */
 	if (wayland_egl_display->tdm_client) {
 		tpl_result_t tpl_ret = TPL_ERROR_NONE;
-		tpl_ret = __tpl_wayland_egl_surface_create_vblank(wayland_egl_surface,
-														  wayland_egl_display->tdm_client);
+		tpl_ret =
+			__tpl_wayland_egl_surface_create_vblank(wayland_egl_surface,
+													wayland_egl_display->tdm_client);
 		if (tpl_ret != TPL_ERROR_NONE) {
 			tbm_surface_queue_destroy(wayland_egl_surface->tbm_queue);
 			free(wayland_egl_surface);
@@ -495,10 +496,12 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 		}
 	}
 
-	TPL_LOG_B("WL_EGL", "[INIT] tpl_surface_t(%p) tpl_wayland_egl_surface_t(%p) tbm_queue(%p)",
-              surface, wayland_egl_surface,
+	TPL_LOG_B("WL_EGL",
+			  "[INIT] tpl_surface_t(%p) tpl_wayland_egl_surface_t(%p) tbm_queue(%p)",
+			  surface, wayland_egl_surface,
 			  wayland_egl_surface->tbm_queue);
-	TPL_LOG_B("WL_EGL", "[INIT] tpl_wayland_egl_surface_t(%p) wl_egl_window(%p) (%dx%d)",
+	TPL_LOG_B("WL_EGL",
+			  "[INIT] tpl_wayland_egl_surface_t(%p) wl_egl_window(%p) (%dx%d)",
 			  wayland_egl_surface, wl_egl_window, surface->width, surface->height);
 
 	return TPL_ERROR_NONE;
@@ -543,12 +546,14 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 		wl_display_dispatch_pending(wayland_egl_display->wl_dpy);
 
 		if (wayland_egl_surface->tdm_vblank) {
-			TPL_LOG_B("WL_EGL", "[TDM_VBLANK_FINI] tpl_wayland_egl_surface_t(%p) tdm_vblank(%p)",
+			TPL_LOG_B("WL_EGL",
+					  "[TDM_VBLANK_FINI] tpl_wayland_egl_surface_t(%p) tdm_vblank(%p)",
 					  wayland_egl_surface, wayland_egl_surface->tdm_vblank);
 			tdm_client_vblank_destroy(wayland_egl_surface->tdm_vblank);
 		}
 
-		TPL_LOG_B("WL_EGL", "[FINI] tpl_wayland_egl_surface_t(%p) wl_egl_window(%p) tbm_queue(%p)",
+		TPL_LOG_B("WL_EGL",
+				  "[FINI] tpl_wayland_egl_surface_t(%p) wl_egl_window(%p) tbm_queue(%p)",
 				  wayland_egl_surface, wl_egl_window, wayland_egl_surface->tbm_queue);
 		tbm_surface_queue_destroy(wayland_egl_surface->tbm_queue);
 		wayland_egl_surface->tbm_queue = NULL;
@@ -583,9 +588,9 @@ __tpl_wayland_egl_surface_wait_vblank(tpl_surface_t *surface)
 {
 	tdm_error tdm_err = 0;
 	tpl_wayland_egl_display_t *wayland_egl_display =
-		(tpl_wayland_egl_display_t*)surface->display->backend.data;
+		(tpl_wayland_egl_display_t *)surface->display->backend.data;
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
-		(tpl_wayland_egl_surface_t*)surface->backend.data;
+		(tpl_wayland_egl_surface_t *)surface->backend.data;
 
 	do {
 		tdm_err = tdm_client_handle_events(wayland_egl_display->tdm_client);
@@ -599,10 +604,11 @@ __tpl_wayland_egl_surface_wait_vblank(tpl_surface_t *surface)
 
 static void
 __cb_tdm_client_wait_vblank(tdm_client_vblank *vblank, tdm_error error,
-						    unsigned int sequence, unsigned int tv_sec,
-					        unsigned int tv_usec, void *user_data)
+							unsigned int sequence, unsigned int tv_sec,
+							unsigned int tv_usec, void *user_data)
 {
-	tpl_wayland_egl_surface_t *wayland_egl_surface = (tpl_wayland_egl_surface_t *)user_data;
+	tpl_wayland_egl_surface_t *wayland_egl_surface =
+		(tpl_wayland_egl_surface_t *)user_data;
 	wayland_egl_surface->vblank_done = TPL_TRUE;
 	TRACE_MARK("TDM_CLIENT_VBLACK");
 }
@@ -662,16 +668,17 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 
 	wl_display_flush(wayland_egl_display->wl_dpy);
 
-	TPL_LOG_B("WL_EGL", "[COMMIT] wl_surface(%p) wl_egl_window(%p)(%dx%d) wl_buffer(%p)",
+	TPL_LOG_B("WL_EGL",
+			  "[COMMIT] wl_surface(%p) wl_egl_window(%p)(%dx%d) wl_buffer(%p)",
 			  wl_egl_window->surface, wl_egl_window,
 			  wl_egl_window->width, wl_egl_window->height, wayland_egl_buffer->wl_proxy);
 
 	/* Start tracking of this tbm_surface until release_cb called. */
-	__tpl_list_push_back(wayland_egl_surface->attached_buffers, (void *)tbm_surface);
+	__tpl_list_push_back(wayland_egl_surface->attached_buffers,
+						 (void *)tbm_surface);
 
 	/* TPL_WAIT_VBLANK = 1 */
-	if (wayland_egl_display->tdm_client)
-	{
+	if (wayland_egl_display->tdm_client) {
 		tdm_err = tdm_client_vblank_wait(wayland_egl_surface->tdm_vblank,
 										 1, /* interval */
 										 __cb_tdm_client_wait_vblank, /* handler */
@@ -713,8 +720,8 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 			   tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
 
 	TPL_LOG_B("WL_EGL",
-              "[ENQ] tpl_wayland_egl_surface_t(%p) tbm_queue(%p) tbm_surface(%p) bo(%d)",
-              wayland_egl_surface, wayland_egl_surface->tbm_queue,
+			  "[ENQ] tpl_wayland_egl_surface_t(%p) tbm_queue(%p) tbm_surface(%p) bo(%d)",
+			  wayland_egl_surface, wayland_egl_surface->tbm_queue,
 			  tbm_surface, tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
 
 	if (wayland_egl_surface->vblank_done == TPL_FALSE) {
@@ -735,8 +742,7 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 
 	if (!wayland_egl_buffer) return TPL_ERROR_INVALID_PARAMETER;
 
-	if (wayland_egl_buffer->reset)
-	{
+	if (wayland_egl_buffer->reset) {
 		/*
 		 * When tbm_surface_queue being reset for receiving
 		 * scan-out buffer or resized buffer
@@ -813,7 +819,8 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 	int num = 0, i;
 	tpl_result_t ret = TPL_ERROR_NONE;
 
-	wayland_egl_display = (tpl_wayland_egl_display_t *)surface->display->backend.data;
+	wayland_egl_display = (tpl_wayland_egl_display_t *)
+						  surface->display->backend.data;
 	wayland_egl_surface = (tpl_wayland_egl_surface_t *)surface->backend.data;
 	wl_display_dispatch_pending(wayland_egl_display->wl_dpy);
 
@@ -821,21 +828,20 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 		return TPL_ERROR_NONE;
 
 	tbm_surface_queue_get_surfaces(wayland_egl_surface->tbm_queue, buffers, &num);
-	if (num == 0)
-	{
+	if (num == 0) {
 		TPL_ERR("tbm_queue(%p) has no buffer", wayland_egl_surface->tbm_queue);
 		return TPL_ERROR_INVALID_OPERATION;
 	}
 
 	queue = wl_display_create_queue(wayland_egl_display->wl_dpy);
-	if (!queue)
-	{
+	if (!queue) {
 		TPL_ERR("failed to create new wl_display queue.");
 		return TPL_ERROR_INVALID_OPERATION;
 	}
 
-	for (i=0; i<num; i++) {
-		wayland_egl_buffer = __tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(buffers[i]);
+	for (i = 0; i < num; i++) {
+		wayland_egl_buffer =
+			__tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(buffers[i]);
 		if (wayland_egl_buffer && wayland_egl_buffer->wl_proxy)
 			wl_proxy_set_queue(wayland_egl_buffer->wl_proxy, queue);
 	}
@@ -845,7 +851,7 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 	 * - buffer_attached_with_fd
 	 * - active
 	 * - deactive
-     *
+	 *
 	 * When wayland_egl_surface->wl_proxy( == wl_tbm_queue ) could not receive
 	 * any events, tpl_surface cannot get a buffer.
 	 * So, we have to manage event queue about wl_tbm_queue along with wl_buffer.
@@ -856,10 +862,10 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 
 	wl_display_dispatch_pending(wayland_egl_display->wl_dpy);
 
-	if (tbm_surface_queue_can_dequeue(wayland_egl_surface->tbm_queue, 0))
-	{
-		for (i=0; i<num; i++) {
-			wayland_egl_buffer = __tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(buffers[i]);
+	if (tbm_surface_queue_can_dequeue(wayland_egl_surface->tbm_queue, 0)) {
+		for (i = 0; i < num; i++) {
+			wayland_egl_buffer =
+				__tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(buffers[i]);
 			if (wayland_egl_buffer && wayland_egl_buffer->wl_proxy)
 				wl_proxy_set_queue(wayland_egl_buffer->wl_proxy, NULL);
 		}
@@ -875,7 +881,7 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 	TRACE_BEGIN("WAITING FOR DEQUEUEABLE");
 	TPL_OBJECT_UNLOCK(surface);
 	while (tbm_surface_queue_can_dequeue(
-			   wayland_egl_surface->tbm_queue, 0) == 0) {
+				wayland_egl_surface->tbm_queue, 0) == 0) {
 		/* Application sent all buffers to the server. Wait for server response. */
 		if (wl_display_dispatch_queue(wayland_egl_display->wl_dpy, queue) == -1) {
 			ret = TPL_ERROR_INVALID_OPERATION;
@@ -886,8 +892,9 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 	TPL_OBJECT_LOCK(surface);
 	TRACE_END();
 
-	for (i=0; i<num; i++) {
-		wayland_egl_buffer = __tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(buffers[i]);
+	for (i = 0; i < num; i++) {
+		wayland_egl_buffer =
+			__tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(buffers[i]);
 		if (wayland_egl_buffer && wayland_egl_buffer->wl_proxy)
 			wl_proxy_set_queue(wayland_egl_buffer->wl_proxy, NULL);
 	}
@@ -900,7 +907,8 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 }
 
 static tbm_surface_h
-__tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
+__tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
+										 uint64_t timeout_ns,
 										 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
@@ -957,14 +965,15 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeou
 		TRACE_MARK("[DEQ][REUSED]BO_NAME:%d", tbm_bo_export(wayland_egl_buffer->bo));
 		TRACE_ASYNC_BEGIN((int)wayland_egl_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
 						  tbm_bo_export(wayland_egl_buffer->bo));
-        TPL_LOG_B("WL_EGL",
-                  "[DEQ][R] tpl_wayland_surface_t(%p) wl_buffer(%p) tbm_surface(%p) bo(%d)",
-                  wayland_egl_surface,
-                  wayland_egl_buffer->wl_proxy,
+		TPL_LOG_B("WL_EGL",
+				  "[DEQ][R] tpl_wayland_surface_t(%p) wl_buffer(%p) tbm_surface(%p) bo(%d)",
+				  wayland_egl_surface,
+				  wayland_egl_buffer->wl_proxy,
 				  tbm_surface, tbm_bo_export(wayland_egl_buffer->bo));
 
 		/* Start tracking of this tbm_surface until enqueue */
-		__tpl_list_push_back(wayland_egl_surface->dequeued_buffers, (void *)tbm_surface);
+		__tpl_list_push_back(wayland_egl_surface->dequeued_buffers,
+							 (void *)tbm_surface);
 		return tbm_surface;
 	}
 
@@ -1017,11 +1026,12 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeou
 	TRACE_ASYNC_BEGIN((int)wayland_egl_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
 					  tbm_bo_export(wayland_egl_buffer->bo));
 	TPL_LOG_B("WL_EGL",
-              "[DEQ][N] tpl_wayland_egl_buffer_t(%p) wl_buffer(%p) tbm_surface(%p) bo(%d)",
-              wayland_egl_buffer, wayland_egl_buffer->wl_proxy, tbm_surface,
-              tbm_bo_export(wayland_egl_buffer->bo));
+			  "[DEQ][N] tpl_wayland_egl_buffer_t(%p) wl_buffer(%p) tbm_surface(%p) bo(%d)",
+			  wayland_egl_buffer, wayland_egl_buffer->wl_proxy, tbm_surface,
+			  tbm_bo_export(wayland_egl_buffer->bo));
 
-	__tpl_list_push_back(wayland_egl_surface->dequeued_buffers, (void *)tbm_surface);
+	__tpl_list_push_back(wayland_egl_surface->dequeued_buffers,
+						 (void *)tbm_surface);
 	return tbm_surface;
 }
 
@@ -1138,8 +1148,7 @@ __cb_client_buffer_release_callback(void *data, struct wl_proxy *proxy)
 			  proxy, tbm_surface,
 			  tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
 
-	if (tbm_surface_internal_is_valid(tbm_surface))
-	{
+	if (tbm_surface_internal_is_valid(tbm_surface)) {
 		tpl_wayland_egl_surface_t *wayland_egl_surface = NULL;
 		tpl_wayland_egl_buffer_t *wayland_egl_buffer = NULL;
 

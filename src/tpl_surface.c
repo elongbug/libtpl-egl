@@ -141,7 +141,8 @@ tpl_surface_validate(tpl_surface_t *surface)
 
 	TPL_OBJECT_UNLOCK(surface);
 
-	TPL_LOG_F("tpl_surface_t(%p) valid [%s]", surface, was_valid?"TRUE":"FALSE");
+	TPL_LOG_F("tpl_surface_t(%p) valid [%s]", surface,
+			  was_valid ? "TRUE" : "FALSE");
 
 	return was_valid;
 }
@@ -185,7 +186,8 @@ tpl_surface_dequeue_buffer(tpl_surface_t *surface)
 }
 
 tbm_surface_h
-tpl_surface_dequeue_buffer_with_sync(tpl_surface_t *surface, uint64_t timeout_ns,
+tpl_surface_dequeue_buffer_with_sync(tpl_surface_t *surface,
+									 uint64_t timeout_ns,
 									 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
@@ -279,7 +281,8 @@ tpl_surface_enqueue_buffer_with_damage_and_sync(tpl_surface_t *surface,
 			  tbm_surface_get_height(tbm_surface));
 
 	/* Call backend post */
-	ret = surface->backend.enqueue_buffer(surface, tbm_surface, num_rects, rects, sync_fence);
+	ret = surface->backend.enqueue_buffer(surface, tbm_surface, num_rects, rects,
+										  sync_fence);
 
 	TPL_OBJECT_UNLOCK(surface);
 	TRACE_END();
@@ -399,6 +402,6 @@ tpl_surface_set_frontbuffer_mode(tpl_surface_t *surface, tpl_bool_t set)
 	TPL_OBJECT_UNLOCK(surface);
 
 	TPL_LOG_F("tpl_surface_t(%p) frontbuffer_mode [%s]",
-			  surface, set?"ACTIVATED":"DEACTIVATED");
+			  surface, set ? "ACTIVATED" : "DEACTIVATED");
 	return ret;
 }

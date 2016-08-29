@@ -96,8 +96,7 @@ __tpl_gbm_display_init(tpl_display_t *display)
 	TPL_ASSERT(display);
 
 	/* Do not allow default display in gbm. */
-	if (!display->native_handle)
-	{
+	if (!display->native_handle) {
 		TPL_ERR("native_handle is NULL. Can not allow default display in gbm.");
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
@@ -248,7 +247,8 @@ __tpl_gbm_display_get_buffer_from_native_pixmap(tpl_handle_t pixmap)
 		return NULL;
 	}
 
-	TPL_LOG_B("GBM", "[PIXMAP] wl_resource(%p) tbm_surface(%p) bo(%d)", pixmap, tbm_surface,
+	TPL_LOG_B("GBM", "[PIXMAP] wl_resource(%p) tbm_surface(%p) bo(%d)", pixmap,
+			  tbm_surface,
 			  tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
 
 	return tbm_surface;
@@ -272,8 +272,8 @@ __tpl_gbm_surface_init(tpl_surface_t *surface)
 
 	if (surface->type == TPL_SURFACE_TYPE_WINDOW) {
 		struct gbm_surface *gbm_surface = (struct gbm_surface *)surface->native_handle;
-		tpl_gbm_surface->tbm_queue = (tbm_surface_queue_h)gbm_tbm_get_surface_queue(
-										gbm_surface);
+		tpl_gbm_surface->tbm_queue =
+			(tbm_surface_queue_h)gbm_tbm_get_surface_queue(gbm_surface);
 		if (!tpl_gbm_surface->tbm_queue) {
 			TPL_ERR("Failed to get tbm_surface_queue from gbm_surface.");
 			goto error;
@@ -442,7 +442,7 @@ __tpl_gbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	if (gbm_buffer) {
 		TRACE_MARK("[DEQ][REUSED]BO_NAME:%d", tbm_bo_export(gbm_buffer->bo));
 		TPL_LOG_B("GBM", "[DEQ][R] tpl_gbm_surface_t(%p) tbm_surface(%p) bo(%d)",
-                gbm_surface, tbm_surface, tbm_bo_export(gbm_buffer->bo));
+				  gbm_surface, tbm_surface, tbm_bo_export(gbm_buffer->bo));
 		return tbm_surface;
 	}
 
@@ -468,7 +468,7 @@ __tpl_gbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 
 	TRACE_MARK("[DEQ][NEW]BO_NAME:%d", tbm_bo_export(gbm_buffer->bo));
 	TPL_LOG_B("GBM", "[DEQ][N] tpl_gbm_surface_t(%p) tbm_surface(%p) bo(%d)",
-			   gbm_surface, tbm_surface, tbm_bo_export(bo));
+			  gbm_surface, tbm_surface, tbm_bo_export(bo));
 	return tbm_surface;
 }
 

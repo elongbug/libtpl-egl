@@ -41,7 +41,7 @@ bool tpl_display_bind_client_display_test(TPLNativeWnd *wnd)
 	// bind display handle
 	tpl_bool_t result = false;
 	result = tpl_display_bind_client_display_handle(wnd->tpl_display,
-			(tpl_handle_t)wnd->dpy);
+			 (tpl_handle_t)wnd->dpy);
 	if (result == false) {
 		LOG("ERRO", LOG_LEVEL_HIGH , " failed:tpl_display_bind_client_display_handle");
 		ret = false;
@@ -51,10 +51,10 @@ bool tpl_display_bind_client_display_test(TPLNativeWnd *wnd)
 	// unbind display handle
 	result = false;
 	result = tpl_display_unbind_client_display_handle(wnd->tpl_display,
-			(tpl_handle_t)wnd->dpy);
+			 (tpl_handle_t)wnd->dpy);
 	if (result == false) {
 		LOG("ERRO", LOG_LEVEL_HIGH ,
-		    " failed:tpl_display_unbind_client_display_handle");
+			" failed:tpl_display_unbind_client_display_handle");
 		ret = false;
 		goto finish;
 	}
@@ -83,7 +83,7 @@ bool tpl_display_get_arg_test (TPLNativeWnd *wnd)
 
 	//tpl_display_get_backend_type
 	tpl_backend_type_t backend_type = tpl_display_get_backend_type(
-			wnd->tpl_display);
+										  wnd->tpl_display);
 	if (backend_type != TPL_BACKEND_WAYLAND) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_display_get_backend_type");
 		ret = false;
@@ -123,14 +123,14 @@ bool tpl_display_query_config_test (TPLNativeWnd *wnd)
 	//query config
 	tpl_bool_t result = false;
 	result = tpl_display_query_config(wnd->tpl_display,
-					  TPL_SURFACE_TYPE_WINDOW,
-					  8,
-					  8,
-					  8,
-					  8,
-					  32,
-					  NULL,
-					  NULL);
+									  TPL_SURFACE_TYPE_WINDOW,
+									  8,
+									  8,
+									  8,
+									  8,
+									  32,
+									  NULL,
+									  NULL);
 	if (result == false ) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_display_query_config");
 		ret = false;
@@ -138,14 +138,14 @@ bool tpl_display_query_config_test (TPLNativeWnd *wnd)
 	}
 
 	result = tpl_display_query_config(wnd->tpl_display,
-					  TPL_SURFACE_TYPE_WINDOW,
-					  8,
-					  8,
-					  8,
-					  8,
-					  24,
-					  NULL,
-					  NULL);
+									  TPL_SURFACE_TYPE_WINDOW,
+									  8,
+									  8,
+									  8,
+									  8,
+									  24,
+									  NULL,
+									  NULL);
 	if (result == false ) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_display_query_config");
 		ret = false;
@@ -153,14 +153,14 @@ bool tpl_display_query_config_test (TPLNativeWnd *wnd)
 	}
 
 	result = tpl_display_query_config(wnd->tpl_display,
-					  TPL_SURFACE_TYPE_WINDOW,
-					  0,
-					  8,
-					  8,
-					  8,
-					  24,
-					  NULL,
-					  NULL);
+									  TPL_SURFACE_TYPE_WINDOW,
+									  0,
+									  8,
+									  8,
+									  8,
+									  24,
+									  NULL,
+									  NULL);
 	if (result != false ) { //unmatched case
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_display_query_config");
 		ret = false;
@@ -252,7 +252,7 @@ bool tpl_display_abnormal_test (TPLNativeWnd *wnd)
 	tpl_display_get_native_handle(NULL);
 	tpl_display_filter_config(NULL, NULL, 0);
 	tpl_display_query_config(NULL, TPL_SURFACE_TYPE_PIXMAP, 0, 8, 8, 8, 24, NULL,
-				 NULL);
+							 NULL);
 
 
 finish:

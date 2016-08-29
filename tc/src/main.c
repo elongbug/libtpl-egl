@@ -116,7 +116,7 @@ __LOG_ERR( const char *func, int line, const char *fmt, ... )
 
 /* wayland native related */
 registry_handle_global(void *data, struct wl_registry *registry, uint32_t id,
-		       const char *interface, uint32_t version)
+					   const char *interface, uint32_t version)
 {
 	TPLNativeWnd *that = (TPLNativeWnd *)(data);
 
@@ -133,7 +133,7 @@ registry_handle_global(void *data, struct wl_registry *registry, uint32_t id,
 
 void
 registry_handle_global_remove(void *data, struct wl_registry *registry,
-			      uint32_t name)
+							  uint32_t name)
 {
 }
 
@@ -143,21 +143,21 @@ const struct wl_registry_listener registry_listener_ = {
 };
 
 shell_surface_handle_ping(void *data, struct wl_shell_surface *shell_surface,
-			  uint32_t serial)
+						  uint32_t serial)
 {
 	wl_shell_surface_pong(shell_surface, serial);
 }
 
 void
 shell_surface_handle_popup_done(void *data,
-				struct wl_shell_surface *shell_surface)
+								struct wl_shell_surface *shell_surface)
 {
 }
 
 void
 shell_surface_handle_configure(void *data,
-			       struct wl_shell_surface *shell_surface, uint32_t edges, int32_t width,
-			       int32_t height)
+							   struct wl_shell_surface *shell_surface, uint32_t edges, int32_t width,
+							   int32_t height)
 {
 	TPLNativeWnd *that = (TPLNativeWnd *)(data);
 	that->width = width;
@@ -202,7 +202,7 @@ finish:
 
 bool
 tpl_test_native_wnd_initialize( TPLNativeWnd *wnd, int x, int y, int width,
-				int height )
+								int height )
 {
 	bool res = false;
 
@@ -239,7 +239,7 @@ tpl_test_native_wnd_initialize( TPLNativeWnd *wnd, int x, int y, int width,
 	wl_shell_surface_set_toplevel(wnd->shell_surface);
 	if (wnd->shell_surface) {
 		wl_shell_surface_add_listener(wnd->shell_surface, &shell_surface_listener_,
-					      wnd);
+									  wnd);
 	}
 
 	wl_shell_surface_set_title(wnd->shell_surface, "tpl_testtest");
@@ -341,16 +341,16 @@ print_usage( char *name )
 	fprintf( stderr, "Options:\n" );
 
 	fprintf( stderr, "  -w	Set width size of the window		 default: %d\n",
-		 g_option.wnd_w );
+			 g_option.wnd_w );
 	fprintf( stderr, "  -h	Set height size of the window		 default: %d\n",
-		 g_option.wnd_h );
+			 g_option.wnd_h );
 
 	fprintf( stderr, "  -t	Specify the test case number		 default: %d\n",
-		 g_option.tc_num );
+			 g_option.tc_num );
 	fprintf( stderr, "  -a	Run all test cases			 default: %s\n",
-		 g_option.all ? "true" : "false" );
+			 g_option.all ? "true" : "false" );
 	fprintf( stderr, "  -l	Show TC name				 default: %s\n",
-		 g_option.show_names ? "true" : "false" );
+			 g_option.show_names ? "true" : "false" );
 	fprintf( stderr, "\n" );
 	exit( 1 );
 }
@@ -479,10 +479,10 @@ main( int argc, char **argv )
 	if ( !wnd ) goto finish;
 
 	res = tpl_test_native_wnd_initialize( wnd,
-					      g_option.wnd_x,
-					      g_option.wnd_y,
-					      g_option.wnd_w,
-					      g_option.wnd_h );
+										  g_option.wnd_x,
+										  g_option.wnd_y,
+										  g_option.wnd_w,
+										  g_option.wnd_h );
 	if ( !res ) goto finish;
 
 	printf( "-------------------tpl test begin!!!-----------------------------------\n");
@@ -508,7 +508,7 @@ main( int argc, char **argv )
 
 		//printf( "----------------------------------------------\n\n" );
 		if ( tpl_test[tc_num].name ) printf( "[%4d] %-50s", tc_num,
-							     tpl_test[tc_num].name );
+												 tpl_test[tc_num].name );
 		else printf( "[%4d] No test name\n", tc_num );
 
 		if ( tpl_test[tc_num].run ) {

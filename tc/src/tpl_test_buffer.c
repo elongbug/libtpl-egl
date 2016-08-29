@@ -22,7 +22,7 @@ bool tpl_buffer_map_unmap_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display , (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -46,7 +46,7 @@ bool tpl_buffer_map_unmap_test(TPLNativeWnd *wnd )
 	//int size = tpl_buf->width * tpl_buf->height * tpl_buf->depth;
 	int size = wnd->width * wnd->height ;
 	LOG("INFO", LOG_LEVEL_LOW , "width=%d,height=%d,size=%d\n", wnd->width ,
-	    wnd->height , size);
+		wnd->height , size);
 	ptr = tpl_buffer_map(wnd->tpl_buf, size);
 	if (ptr == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_buffer_map");
@@ -86,7 +86,7 @@ bool tpl_buffer_lock_unlock_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -172,7 +172,7 @@ bool tpl_buffer_get_arg_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -283,7 +283,7 @@ bool tpl_buffer_create_native_buffer_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -338,7 +338,7 @@ bool tpl_buffer_abnormal_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -405,7 +405,7 @@ bool tpl_buffer_stress_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display , (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;

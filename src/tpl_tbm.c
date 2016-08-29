@@ -245,7 +245,7 @@ __tpl_tbm_surface_enqueue_buffer(tpl_surface_t *surface,
 	TPL_IGNORE(rects);
 
 	if (!tbm_surface_internal_is_valid(tbm_surface)) {
-		TPL_ERR("Failed to enqueue tbm_surface(%p) Invalid value.",tbm_surface);
+		TPL_ERR("Failed to enqueue tbm_surface(%p) Invalid value.", tbm_surface);
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 

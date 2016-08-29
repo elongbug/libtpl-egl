@@ -1,0 +1,7 @@
+apply coding style with astyle
+
+1. To apply libtpl-egl coding style to .c code, run this command:
+	 astyle -A4 -t4 -xT4 -p -z2 -H -k3 -W3 -xC80 -xL -n -r  "./*.c"
+
+2. To apply libtpl-egl coding style to .h code, run this command:
+	 astyle -A4 -t4 -xT4 -p -z2 -H -k3 -W3 -xC80 -xL -n -r  "./*.h"

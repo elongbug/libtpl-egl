@@ -463,7 +463,8 @@ __tpl_wayland_vk_wsi_surface_validate(tpl_surface_t *surface)
 
 static tbm_surface_h
 __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
-											uint64_t timeout_ns, tbm_fd *sync_fence)
+											uint64_t timeout_ns,
+											tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
@@ -509,7 +510,8 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
 		}
 	}
 	pthread_mutex_lock(&wayland_vk_wsi_surface->free_queue_mutex);
-	while (tbm_surface_queue_can_dequeue(wayland_vk_wsi_surface->tbm_queue, 0) == 0) {
+	while (tbm_surface_queue_can_dequeue(wayland_vk_wsi_surface->tbm_queue,
+										 0) == 0) {
 		if (timeout_ns != UINT64_MAX) {
 			int ret;
 			ret = pthread_cond_timedwait(&wayland_vk_wsi_surface->free_queue_cond,
@@ -919,12 +921,13 @@ __tpl_wayland_vk_wsi_worker_thread_loop(void *arg)
 		clock_gettime(CLOCK_REALTIME, &abs_time);
 		abs_time.tv_sec += 1;
 		pthread_mutex_lock(&wayland_vk_wsi_surface->dirty_queue_mutex);
-		while (tbm_surface_queue_can_acquire(wayland_vk_wsi_surface->tbm_queue, 0) == 0 &&
-			   timeout == TPL_FALSE) {
+		while ((tbm_surface_queue_can_acquire(wayland_vk_wsi_surface->tbm_queue,
+											  0) == 0) &&
+			   (timeout == TPL_FALSE)) {
 			int ret;
 			ret = pthread_cond_timedwait(&wayland_vk_wsi_surface->dirty_queue_cond,
-										&wayland_vk_wsi_surface->dirty_queue_mutex,
-										&abs_time);
+										 &wayland_vk_wsi_surface->dirty_queue_mutex,
+										 &abs_time);
 			if (ret == ETIMEDOUT)
 				timeout = TPL_TRUE;
 		}
@@ -933,7 +936,8 @@ __tpl_wayland_vk_wsi_worker_thread_loop(void *arg)
 			continue;
 		}
 
-		tsq_err = tbm_surface_queue_acquire(wayland_vk_wsi_surface->tbm_queue, &tbm_surface);
+		tsq_err = tbm_surface_queue_acquire(wayland_vk_wsi_surface->tbm_queue,
+											&tbm_surface);
 		pthread_mutex_unlock(&wayland_vk_wsi_surface->dirty_queue_mutex);
 		if (tsq_err != TBM_SURFACE_QUEUE_ERROR_NONE) {
 			TPL_ERR("Failed to acquire tbm_surface. | tsq_err = %d", tsq_err);

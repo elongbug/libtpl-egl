@@ -22,7 +22,7 @@ bool tpl_object_get_type_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -87,7 +87,7 @@ bool tpl_object_userdata_test(TPLNativeWnd *wnd )
 
 	//2. set userdate
 	tpl_object_set_user_data((tpl_object_t *)wnd->tpl_display, (void *)wnd->dpy,
-				 NULL);
+							 NULL);
 
 	//3.get userdate
 	void *get_dpy = NULL;

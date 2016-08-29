@@ -20,7 +20,7 @@ bool tpl_surface_create_test(TPLNativeWnd *wnd)
 	//2.tpl_surface_create
 	tpl_surface_t *tpl_surf = NULL;
 	tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-				      TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+								  TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -51,7 +51,7 @@ bool tpl_surface_get_arg_test(TPLNativeWnd *wnd)
 	//2.tpl_surface_create
 	tpl_surface_t *tpl_surf = NULL;
 	tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-				      TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+								  TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -104,7 +104,7 @@ bool tpl_surface_frame_test(TPLNativeWnd *wnd)
 	//2.tpl_surface_create
 	tpl_surface_t *tpl_surf = NULL;
 	tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-				      TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+								  TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -149,7 +149,7 @@ bool tpl_surface_get_buffer_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	tpl_surface_t *tpl_surf = NULL;
 	tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-				      TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+								  TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -209,7 +209,7 @@ bool tpl_surface_post_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	tpl_surface_t *tpl_surf = NULL;
 	tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-				      TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+								  TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -233,7 +233,7 @@ bool tpl_surface_post_test(TPLNativeWnd *wnd )
 	//int size = tpl_buf->width * tpl_buf->height * tpl_buf->depth;
 	int size = wnd->width * wnd->height ;
 	LOG("INFO", LOG_LEVEL_LOW , "width=%d,height=%d,size=%d", wnd->width ,
-	    wnd->height , size);
+		wnd->height , size);
 	ptr = tpl_buffer_map(wnd->tpl_buf, size);
 	if (ptr == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_buffer_map");
@@ -309,11 +309,11 @@ bool tpl_surface_abnormal_test(TPLNativeWnd *wnd)
 	//abnormal test
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(NULL, NULL, TPL_SURFACE_TYPE_WINDOW,
-					   TPL_FORMAT_ARGB8888);
+									   TPL_FORMAT_ARGB8888);
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd, 10,
-					   TPL_FORMAT_ARGB8888);
+									   TPL_FORMAT_ARGB8888);
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display, (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_INVALID);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_INVALID);
 	/*	  if(tpl_surf != NULL)
 	{
 	    LOG("ERRO", LOG_LEVEL_HIGH , "abnormal test failed:%s",__func__);
@@ -364,7 +364,7 @@ bool tpl_surface_stress_test(TPLNativeWnd *wnd )
 	//2.tpl_surface_create
 	wnd->tpl_surf = NULL;
 	wnd->tpl_surf = tpl_surface_create(wnd->tpl_display , (tpl_handle_t)wnd->wnd,
-					   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+									   TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 	if (wnd->tpl_surf == NULL) {
 		LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 		ret = false;
@@ -387,7 +387,7 @@ bool tpl_surface_stress_test(TPLNativeWnd *wnd )
 	tpl_buffer_t *buf_array[STRESS_NUM] = {0};
 	for (index = 0; index < STRESS_NUM; index++) {
 		surf_array[index] = tpl_surface_create(wnd->tpl_display ,
-						       (tpl_handle_t)wnd->wnd, TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
+											   (tpl_handle_t)wnd->wnd, TPL_SURFACE_TYPE_WINDOW, TPL_FORMAT_ARGB8888);
 		if (wnd->tpl_surf == NULL) {
 			LOG("ERRO", LOG_LEVEL_HIGH , "failed:tpl_surface_create");
 			ret = false;
