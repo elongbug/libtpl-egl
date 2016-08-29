@@ -152,7 +152,8 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 		}
 
 		wayland_egl_display->wl_tbm =
-			wayland_tbm_client_get_wl_tbm(wayland_egl_display->wl_tbm_client);
+			(struct wl_proxy *)wayland_tbm_client_get_wl_tbm(
+				wayland_egl_display->wl_tbm_client);
 		if (!wayland_egl_display->wl_tbm) {
 			TPL_ERR("Failed to get wl_tbm from wayland_tbm_client.");
 			goto free_wl_display;
