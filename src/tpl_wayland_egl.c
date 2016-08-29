@@ -47,7 +47,7 @@ struct _tpl_wayland_egl_surface {
 	tpl_bool_t vblank_done;
 	tpl_list_t *attached_buffers; /* list for tracking [ACQ]~[REL] buffers */
 	tpl_list_t *dequeued_buffers; /* list for tracking [DEQ]~[ENQ] buffers */
-	struct wl_proxy *wl_proxy; /* wl_tbm_queue proxy */
+	struct wl_proxy *wl_tbm_queue; /* wl_tbm_queue proxy */
 };
 
 struct _tpl_wayland_egl_buffer {
@@ -448,10 +448,11 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 		 * The activate/decactivate events is sent from the display server
 		 * at the no-comoposite mode and the composite mode.
 		 */
-		wayland_egl_surface->wl_proxy = (struct wl_proxy *)
-										wayland_tbm_client_get_wl_tbm_queue(wayland_egl_display->wl_tbm_client,
-												wl_egl_window->surface);
-		if (!wayland_egl_surface->wl_proxy) {
+		wayland_egl_surface->wl_tbm_queue =
+			(struct wl_proxy *)wayland_tbm_client_get_wl_tbm_queue(
+				wayland_egl_display->wl_tbm_client,
+				wl_egl_window->surface);
+		if (!wayland_egl_surface->wl_tbm_queue) {
 			TPL_ERR("Failed to get tbm_queue from wayland_tbm_client.");
 			return TPL_ERROR_INVALID_OPERATION;
 		}
@@ -488,7 +489,7 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 		tpl_result_t tpl_ret = TPL_ERROR_NONE;
 		tpl_ret =
 			__tpl_wayland_egl_surface_create_vblank(wayland_egl_surface,
-													wayland_egl_display->tdm_client);
+					wayland_egl_display->tdm_client);
 		if (tpl_ret != TPL_ERROR_NONE) {
 			tbm_surface_queue_destroy(wayland_egl_surface->tbm_queue);
 			free(wayland_egl_surface);
@@ -846,19 +847,19 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 			wl_proxy_set_queue(wayland_egl_buffer->wl_proxy, queue);
 	}
 
-	/* wayland_egl_surface->wl_proxy has to receive below wayland events.
+	/* wayland_egl_surface->wl_tbm_queue has to receive below wayland events.
 	 * - buffer_attached_with_id
 	 * - buffer_attached_with_fd
 	 * - active
 	 * - deactive
 	 *
-	 * When wayland_egl_surface->wl_proxy( == wl_tbm_queue ) could not receive
+	 * When wayland_egl_surface->wl_tbm_queue( == wl_tbm_queue ) could not receive
 	 * any events, tpl_surface cannot get a buffer.
 	 * So, we have to manage event queue about wl_tbm_queue along with wl_buffer.
 	 */
 
-	if (wayland_egl_surface->wl_proxy)
-		wl_proxy_set_queue(wayland_egl_surface->wl_proxy, queue);
+	if (wayland_egl_surface->wl_tbm_queue)
+		wl_proxy_set_queue(wayland_egl_surface->wl_tbm_queue, queue);
 
 	wl_display_dispatch_pending(wayland_egl_display->wl_dpy);
 
@@ -870,8 +871,8 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 				wl_proxy_set_queue(wayland_egl_buffer->wl_proxy, NULL);
 		}
 
-		if (wayland_egl_surface->wl_proxy)
-			wl_proxy_set_queue(wayland_egl_surface->wl_proxy, NULL);
+		if (wayland_egl_surface->wl_tbm_queue)
+			wl_proxy_set_queue(wayland_egl_surface->wl_tbm_queue, NULL);
 
 		wl_event_queue_destroy(queue);
 
@@ -899,16 +900,15 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 			wl_proxy_set_queue(wayland_egl_buffer->wl_proxy, NULL);
 	}
 
-	if (wayland_egl_surface->wl_proxy)
-		wl_proxy_set_queue(wayland_egl_surface->wl_proxy, NULL);
+	if (wayland_egl_surface->wl_tbm_queue)
+		wl_proxy_set_queue(wayland_egl_surface->wl_tbm_queue, NULL);
 
 	wl_event_queue_destroy(queue);
 	return ret;
 }
 
 static tbm_surface_h
-__tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
-										 uint64_t timeout_ns,
+__tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 										 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
@@ -930,8 +930,8 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 
 	/* Check whether the surface was resized by wayland_egl */
 	if (wayland_egl_surface->resized == TPL_TRUE) {
-		struct wl_egl_window *wl_egl_window = (struct wl_egl_window *)
-											  surface->native_handle;
+		struct wl_egl_window *wl_egl_window =
+			(struct wl_egl_window *)surface->native_handle;
 		int width, height, format;
 		width = wl_egl_window->width;
 		height = wl_egl_window->height;
@@ -985,8 +985,9 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 		return NULL;
 	}
 
-	wl_proxy = (struct wl_proxy *)wayland_tbm_client_create_buffer(
-				   wayland_egl_display->wl_tbm_client, tbm_surface);
+	wl_proxy =
+		(struct wl_proxy *)wayland_tbm_client_create_buffer(
+			wayland_egl_display->wl_tbm_client, tbm_surface);
 	if (!wl_proxy) {
 		TPL_ERR("Failed to create TBM client buffer!");
 		tbm_surface_internal_unref(tbm_surface);
