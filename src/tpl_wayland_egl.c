@@ -726,6 +726,7 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
 	TPL_ASSERT(tbm_surface);
+	TPL_OBJECT_CHECK_RETURN(surface, TPL_ERROR_INVALID_PARAMETER);
 
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
 		(tpl_wayland_egl_surface_t *) surface->backend.data;
@@ -953,6 +954,7 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 	TPL_ASSERT(surface->backend.data);
 	TPL_ASSERT(surface->display);
 	TPL_ASSERT(surface->display->backend.data);
+	TPL_OBJECT_CHECK_RETURN(surface, NULL);
 
 	tbm_surface_h tbm_surface = NULL;
 	tpl_wayland_egl_buffer_t *wayland_egl_buffer = NULL;
