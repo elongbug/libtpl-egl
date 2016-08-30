@@ -15,10 +15,34 @@
 #include <tbm_surface.h>
 #include <tbm_surface_internal.h>
 
-#define TPL_OBJECT_BUCKET_BITS       5
-
+#define TPL_OBJECT_BUCKET_BITS		5
 #define TPL_OBJECT_LOCK(object)		__tpl_object_lock((tpl_object_t *)(object))
 #define TPL_OBJECT_UNLOCK(object)	__tpl_object_unlock((tpl_object_t *)(object))
+#define TPL_OBJECT_MAGIC			0xe0b9ec75
+#define TPL_OBJECT_MAGIC_FREED		0xe0bf6eed
+#define TPL_OBJECT(x)				((tpl_object_t *)(x))
+
+#ifdef OBJECT_HASH_CHECK
+# define TPL_OBJECT_HASH_FIND(x)	__tpl_object_hash_find(TPL_OBJECT(x))
+# define TPL_OBJECT_CHECK(x)												\
+	do {																	\
+		if (!TPL_OBJECT(x))return;											\
+		else if ((tpl_obj_hash_check) && (!TPL_OBJECT_HASH_FIND(x))) return;\
+		else if ((TPL_OBJECT(x)->magic != (int)TPL_OBJECT_MAGIC)) return;	\
+	} while (0)
+# define TPL_OBJECT_CHECK_RETURN(x, ret)										\
+	do {																		\
+		if (!TPL_OBJECT(x))return ret;											\
+		else if ((tpl_obj_hash_check) && (!TPL_OBJECT_HASH_FIND(x))) return ret;\
+		else if ((TPL_OBJECT(x)->magic != (int)TPL_OBJECT_MAGIC)) return ret;	\
+	} while (0)
+#else
+# define TPL_OBJECT_CHECK(x)						do {if ((!TPL_OBJECT(x)) || (TPL_OBJECT(x)->magic != (int)TPL_OBJECT_MAGIC)) return;} while (0)
+# define TPL_OBJECT_CHECK_RETURN(x, ret)			do {if ((!TPL_OBJECT(x)) || (TPL_OBJECT(x)->magic != (int)TPL_OBJECT_MAGIC)) return ret;} while (0)
+#endif
+
+#define TPL_OBJECT_TYPE_CHECK(x, tp)				do {if ((TPL_OBJECT(x)->type) != (tpl_object_type_t)(tp)) { TPL_ERR("Object type check failed"); return;} } while (0)
+#define TPL_OBJECT_TYPE_CHECK_RETURN(x, tp, ret)	do {if ((TPL_OBJECT(x)->type) != (tpl_object_type_t)(tp)) { TPL_ERR("Object type check failed"); return ret;} } while (0)
 
 typedef struct _tpl_runtime	tpl_runtime_t;
 typedef struct _tpl_display_backend	tpl_display_backend_t;
@@ -75,6 +99,7 @@ struct _tpl_surface_backend {
 };
 
 struct _tpl_object {
+	int magic;
 	tpl_object_type_t type;
 	tpl_util_atomic_uint reference;
 	tpl_free_func_t free;
@@ -211,5 +236,19 @@ void __tpl_hashlist_delete(tpl_hlist_t *list, size_t key);
 void __tpl_hashlist_do_for_all_nodes(tpl_hlist_t *list,
 									 void (*cb_func)(void *));
 void *__tpl_hashlist_lookup(tpl_hlist_t *list, size_t key);
+
+#ifdef OBJECT_HASH_CHECK
+/* object hash check global variable */
+extern tpl_bool_t tpl_obj_hash_check;
+extern tpl_hlist_t *tpl_obj_hash;
+/* object hash check functions */
+void __tpl_object_hash_init(void);
+void __tpl_object_hash_shutdown(void);
+static TPL_INLINE tpl_object_t *
+__tpl_object_hash_find(tpl_object_t *object)
+{
+	return (tpl_object_t *)__tpl_hashlist_lookup(tpl_obj_hash, (size_t)object);
+}
+#endif
 
 #endif /* TPL_INTERNAL_H */

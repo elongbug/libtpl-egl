@@ -11,8 +11,9 @@
 #TPL FEATURE OPTION
 %define ENABLE_TTRACE	0
 %define ENABLE_DLOG	0
-%define ENABLE_DEFAULT_LOG 0
+%define ENABLE_DEFAULT_LOG	0
 %define ENABLE_PNG_DUMP	0
+%define ENABLE_OBJECT_HASH_CHECK	1
 #WAYLAND-EGL VERSION MACROS
 %define WL_EGL_VERSION	1.0.0
 
@@ -147,6 +148,10 @@ TPL_OPTIONS=${TPL_OPTIONS}-default_log
 
 %if "%{ENABLE_PNG_DUMP}" == "1"
 TPL_OPTIONS=${TPL_OPTIONS}-pngdump
+%endif
+
+%if "%{ENABLE_OBJECT_HASH_CHECK}" == "1"
+TPL_OPTIONS=${TPL_OPTIONS}-object_hash_check
 %endif
 
 %ifarch %arm aarch64

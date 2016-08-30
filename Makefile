@@ -52,6 +52,9 @@ ifneq ($(call is-feature-enabled,pngdump),)
 	CFLAGS += `pkg-config --cflags libpng`
 	LDFLAGS += `pkg-config --libs libpng`
 endif
+ifneq ($(call is-feature-enabled,object_hash_check),)
+	CFLAGS += -DOBJECT_HASH_CHECK
+endif
 
 ifneq ($(call is-feature-enabled,arm_atomic_operation),)
 	CFLAGS += -DARM_ATOMIC_OPERATION

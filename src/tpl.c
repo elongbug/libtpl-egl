@@ -25,8 +25,17 @@ __tpl_runtime_init()
 	return TPL_ERROR_NONE;
 }
 
+static void __attribute__((constructor))
+__tpl_init(void)
+{
+	TPL_DEBUG("[libtpl-egl] loaded");
+#ifdef OBJECT_HASH_CHECK
+	__tpl_object_hash_init();
+#endif
+}
+
 static void __attribute__((destructor))
-__tpl_runtime_fini()
+__tpl_runtime_fini(void)
 {
 	if (runtime != NULL) {
 		int i;
@@ -39,6 +48,10 @@ __tpl_runtime_fini()
 		free(runtime);
 		runtime = NULL;
 	}
+
+#ifdef OBJECT_HASH_CHECK
+	__tpl_object_hash_shutdown();
+#endif
 }
 
 /* Begin: OS dependent function definition */
