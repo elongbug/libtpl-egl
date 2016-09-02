@@ -45,6 +45,7 @@ Group: Graphics & UI Framework/GL
 License:	MIT
 Source:		%{name}-%{version}.tar.gz
 
+BuildRequires:	cmake
 BuildRequires:	pkg-config
 BuildRequires:	pkgconfig(libdrm)
 BuildRequires:	pkgconfig(libtbm)
@@ -172,7 +173,13 @@ make all
 cd src/wayland-egl
 export WLD_EGL_SO_VER=%{WL_EGL_VERSION}
 make
+cd ../../
 %endif
+
+#pkgconfig configure
+cd pkgconfig
+cmake .
+cd ..
 
 %install
 rm -fr %{buildroot}
