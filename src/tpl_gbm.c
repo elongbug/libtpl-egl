@@ -337,7 +337,9 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 								 tbm_surface_h tbm_surface, int num_rects,
 								 const int *rects, tbm_fd sync_fence)
 {
-	tbm_bo bo;
+	tpl_gbm_buffer_t *gbm_buffer = NULL;
+	tpl_gbm_surface_t *gbm_surface = NULL;
+	tbm_bo_handle bo_handle;
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
@@ -346,7 +348,7 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 	TPL_IGNORE(num_rects);
 	TPL_IGNORE(rects);
 
-	tpl_gbm_surface_t *gbm_surface = (tpl_gbm_surface_t *)surface->backend.data;
+	gbm_surface = (tpl_gbm_surface_t *)surface->backend.data;
 	if (!gbm_surface) {
 		TPL_ERR("tpl_gbm_surface_t is invalid. tpl_surface_t(%p)",
 				surface);
@@ -358,9 +360,16 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
-	bo = tbm_surface_internal_get_bo(tbm_surface, 0);
-	tbm_bo_handle bo_handle = tbm_bo_get_handle(bo, TBM_DEVICE_CPU);
+	gbm_buffer = __tpl_gbm_get_gbm_buffer_from_tbm_surface(tbm_surface);
+	if (!gbm_buffer) {
+		TPL_ERR("Filed to get gbm_buffer from tbm_surface(%p).", tbm_surface);
+		return TPL_ERROR_INVALID_PARAMETER;
+	}
 
+	TRACE_ASYNC_END((int)gbm_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
+					tbm_bo_export(gbm_buffer->bo));
+
+	bo_handle = tbm_bo_get_handle(gbm_buffer->bo, TBM_DEVICE_CPU);
 	if (bo_handle.ptr)
 		TPL_IMAGE_DUMP(bo_handle.ptr, surface->width, surface->height,
 					   surface->dump_count++);
@@ -386,9 +395,9 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 	}
 
 	TPL_LOG_B("GBM", "[ENQ] tpl_gbm_surface_t(%p) tbm_surface(%p) bo(%d)",
-			  gbm_surface, tbm_surface, tbm_bo_export(bo));
+			  gbm_surface, tbm_surface, tbm_bo_export(gbm_buffer->bo));
 
-	TRACE_MARK("[ENQ] BO_NAME:%d", tbm_bo_export(bo));
+	TRACE_MARK("[ENQ] BO_NAME:%d", tbm_bo_export(gbm_buffer->bo));
 	return TPL_ERROR_NONE;
 }
 
@@ -441,6 +450,8 @@ __tpl_gbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	gbm_buffer = __tpl_gbm_get_gbm_buffer_from_tbm_surface(tbm_surface);
 	if (gbm_buffer) {
 		TRACE_MARK("[DEQ][REUSED]BO_NAME:%d", tbm_bo_export(gbm_buffer->bo));
+		TRACE_ASYNC_BEGIN((int)gbm_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
+						  tbm_bo_export(gbm_buffer->bo));
 		TPL_LOG_B("GBM", "[DEQ][R] tpl_gbm_surface_t(%p) tbm_surface(%p) bo(%d)",
 				  gbm_surface, tbm_surface, tbm_bo_export(gbm_buffer->bo));
 		return tbm_surface;
@@ -467,6 +478,8 @@ __tpl_gbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	__tpl_gbm_set_gbm_buffer_to_tbm_surface(tbm_surface, gbm_buffer);
 
 	TRACE_MARK("[DEQ][NEW]BO_NAME:%d", tbm_bo_export(gbm_buffer->bo));
+	TRACE_ASYNC_BEGIN((int)gbm_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
+					  tbm_bo_export(gbm_buffer->bo));
 	TPL_LOG_B("GBM", "[DEQ][N] tpl_gbm_surface_t(%p) tbm_surface(%p) bo(%d)",
 			  gbm_surface, tbm_surface, tbm_bo_export(bo));
 	return tbm_surface;
