@@ -203,7 +203,7 @@ __tpl_hashlist_insert(tpl_hlist_t *list, size_t key, void *data)
 	/* check if key already exists in the list */
 	prev_node = __tpl_hlist_get_node(list, key);
 	if (prev_node) {
-		TPL_ERR("key(%d) already exists in tpl_hlist_t(%p).", key, list);
+		TPL_ERR("key(%zu) already exists in tpl_hlist_t(%p).", key, list);
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
