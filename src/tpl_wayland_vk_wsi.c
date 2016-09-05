@@ -417,8 +417,11 @@ __tpl_wayland_vk_wsi_surface_enqueue_buffer(tpl_surface_t *surface,
 	if (sync_fence != -1) {
 		/* non worker thread mode */
 		/* TODO: set max wait time */
-		if (tbm_sync_fence_wait(sync_fence, -1) != 1)
-			TPL_ERR("Failed to wait sync. | error: %d(%s)", errno, strerror(errno));
+		if (tbm_sync_fence_wait(sync_fence, -1) != 1) {
+			char buf[1024];
+			strerror_r(errno, buf, sizeof(buf));
+			TPL_ERR("Failed to wait sync. | error: %d(%s)", errno, buf);
+		}
 		close(sync_fence);
 	}
 
@@ -554,8 +557,11 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
 				*sync_fence = tbm_sync_fence_create(wayland_vk_wsi_buffer->sync_timeline,
 													name,
 													wayland_vk_wsi_buffer->sync_timestamp);
-				if (*sync_fence == -1)
-					TPL_ERR("Failed to create TBM sync fence: %d(%s)", errno, strerror(errno));
+				if (*sync_fence == -1) {
+					char buf[1024];
+					strerror_r(errno, buf, sizeof(buf));
+					TPL_ERR("Failed to create TBM sync fence: %d(%s)", errno, buf);
+				}
 			} else {
 				*sync_fence = -1;
 			}
@@ -585,7 +591,9 @@ __tpl_wayland_vk_wsi_surface_dequeue_buffer(tpl_surface_t *surface,
 		*sync_fence = -1;
 	wayland_vk_wsi_buffer->sync_timeline = tbm_sync_timeline_create();
 	if (wayland_vk_wsi_buffer->sync_timeline == -1) {
-		TPL_ERR("Failed to create TBM sync timeline: %d(%s)", errno, strerror(errno));
+		char buf[1024];
+		strerror_r(errno, buf, sizeof(buf));
+		TPL_ERR("Failed to create TBM sync timeline: %d(%s)", errno, buf);
 		wl_proxy_destroy(wl_proxy);
 		tbm_surface_internal_unref(tbm_surface);
 		free(wayland_vk_wsi_buffer);
@@ -948,8 +956,11 @@ __tpl_wayland_vk_wsi_worker_thread_loop(void *arg)
 			__tpl_wayland_vk_wsi_get_wayland_buffer_from_tbm_surface(tbm_surface);
 		TPL_ASSERT(wayland_vk_wsi_buffer);
 		if (wayland_vk_wsi_buffer->wait_sync != -1) {
-			if (tbm_sync_fence_wait(wayland_vk_wsi_buffer->wait_sync, -1) != 1)
-				TPL_ERR("Failed to wait sync. | error: %d(%s)", errno, strerror(errno));
+			if (tbm_sync_fence_wait(wayland_vk_wsi_buffer->wait_sync, -1) != 1) {
+				char buf[1024];
+				strerror_r(errno, buf, sizeof(buf));
+				TPL_ERR("Failed to wait sync. | error: %d(%s)", errno, buf);
+			}
 			close(wayland_vk_wsi_buffer->wait_sync);
 			wayland_vk_wsi_buffer->wait_sync = -1;
 		}
