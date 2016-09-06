@@ -40,6 +40,7 @@ struct _tpl_wayland_egl_display {
 };
 
 struct _tpl_wayland_egl_surface {
+	tpl_object_t base;
 	tbm_surface_queue_h tbm_queue;
 	tbm_surface_h current_buffer;
 	tpl_bool_t resized;
@@ -374,12 +375,15 @@ __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 
 	wayland_egl_surface->reset = TPL_TRUE;
 
+	TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+
 	/* Set the reset flag of the buffers which attached but not released to TPL_TRUE. */
 	__tpl_wayland_egl_buffer_set_reset_flag(wayland_egl_surface->attached_buffers);
 
 	/* Set the reset flag of the buffers which dequeued but not enqueued to TPL_TRUE. */
 	__tpl_wayland_egl_buffer_set_reset_flag(wayland_egl_surface->dequeued_buffers);
 
+	TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
 }
 
 static tpl_result_t
@@ -434,6 +438,13 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 						  sizeof(tpl_wayland_egl_surface_t));
 	if (!wayland_egl_surface) {
 		TPL_ERR("Failed to allocate memory for new tpl_wayland_egl_surface_t.");
+		return TPL_ERROR_INVALID_OPERATION;
+	}
+
+	if (__tpl_object_init(&wayland_egl_surface->base, TPL_OBJECT_SURFACE,
+						  NULL) != TPL_ERROR_NONE) {
+		TPL_ERR("Failed to initialize backend surface's base class!");
+		free(wayland_egl_surface);
 		return TPL_ERROR_INVALID_OPERATION;
 	}
 
@@ -587,6 +598,7 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 	 * the list of attached_buffers in order to free the created resources.
 	 * (tpl_wayland_egl_buffer_t or wl_buffer) */
 	if (wayland_egl_surface->attached_buffers) {
+		TPL_OBJECT_LOCK(&wayland_egl_surface->base);
 		while (!__tpl_list_is_empty(wayland_egl_surface->attached_buffers)) {
 			tbm_surface_h tbm_surface =
 				__tpl_list_pop_front(wayland_egl_surface->attached_buffers, NULL);
@@ -595,14 +607,18 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 
 		__tpl_list_free(wayland_egl_surface->attached_buffers, NULL);
 		wayland_egl_surface->attached_buffers = NULL;
+		TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
 	}
 
 	/* the list of dequeued_buffers just does deletion */
 	if (wayland_egl_surface->dequeued_buffers) {
+		TPL_OBJECT_LOCK(&wayland_egl_surface->base);
 		__tpl_list_free(wayland_egl_surface->dequeued_buffers, NULL);
 		wayland_egl_surface->dequeued_buffers = NULL;
+		TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
 	}
 
+	__tpl_object_fini(&wayland_egl_surface->base);
 	free(wayland_egl_surface);
 	surface->backend.data = NULL;
 }
@@ -697,9 +713,13 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 			  wl_egl_window->surface, wl_egl_window,
 			  wl_egl_window->width, wl_egl_window->height, wayland_egl_buffer->wl_proxy);
 
-	/* Start tracking of this tbm_surface until release_cb called. */
-	__tpl_list_push_back(wayland_egl_surface->attached_buffers,
-						 (void *)tbm_surface);
+	if (wayland_egl_surface->attached_buffers) {
+		TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+		/* Start tracking of this tbm_surface until release_cb called. */
+		__tpl_list_push_back(wayland_egl_surface->attached_buffers,
+							 (void *)tbm_surface);
+		TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+	}
 
 	/* TPL_WAIT_VBLANK = 1 */
 	if (wayland_egl_display->tdm_client) {
@@ -758,9 +778,13 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 		close(sync_fence);
 	}
 
-	/* Stop tracking of this render_done tbm_surface. */
-	__tpl_list_remove_data(wayland_egl_surface->dequeued_buffers,
-						   (void *)tbm_surface, TPL_FIRST, NULL);
+	if (wayland_egl_surface->dequeued_buffers) {
+		TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+		/* Stop tracking of this render_done tbm_surface. */
+		__tpl_list_remove_data(wayland_egl_surface->dequeued_buffers,
+							   (void *)tbm_surface, TPL_FIRST, NULL);
+		TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+	}
 
 	wayland_egl_buffer =
 		__tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(tbm_surface);
@@ -1011,9 +1035,14 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 				  wayland_egl_buffer->wl_proxy,
 				  tbm_surface, tbm_bo_export(wayland_egl_buffer->bo));
 
-		/* Start tracking of this tbm_surface until enqueue */
-		__tpl_list_push_back(wayland_egl_surface->dequeued_buffers,
-							 (void *)tbm_surface);
+		if (wayland_egl_surface->dequeued_buffers) {
+			TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+			/* Start tracking of this tbm_surface until enqueue */
+			__tpl_list_push_back(wayland_egl_surface->dequeued_buffers,
+								 (void *)tbm_surface);
+			TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+		}
+
 		return tbm_surface;
 	}
 
@@ -1071,8 +1100,13 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 			  wayland_egl_buffer, wayland_egl_buffer->wl_proxy, tbm_surface,
 			  tbm_bo_export(wayland_egl_buffer->bo));
 
-	__tpl_list_push_back(wayland_egl_surface->dequeued_buffers,
-						 (void *)tbm_surface);
+	if (wayland_egl_surface->dequeued_buffers) {
+		TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+		__tpl_list_push_back(wayland_egl_surface->dequeued_buffers,
+							 (void *)tbm_surface);
+		TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+	}
+
 	return tbm_surface;
 }
 
@@ -1199,10 +1233,13 @@ __cb_client_buffer_release_callback(void *data, struct wl_proxy *proxy)
 		if (wayland_egl_buffer) {
 			wayland_egl_surface = wayland_egl_buffer->wayland_egl_surface;
 
-			/* Stop tracking of this released tbm_surface. */
-			__tpl_list_remove_data(wayland_egl_surface->attached_buffers,
-								   (void *)tbm_surface, TPL_FIRST, NULL);
-
+			if (wayland_egl_surface->attached_buffers) {
+				TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+				/* Stop tracking of this released tbm_surface. */
+				__tpl_list_remove_data(wayland_egl_surface->attached_buffers,
+									   (void *)tbm_surface, TPL_FIRST, NULL);
+				TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+			}
 			/* If tbm_surface_queue was reset before release_cb called out,
 			 * tbm_surface_queue_release doesn't have to be done. */
 			if (wayland_egl_buffer->reset == TPL_FALSE)
