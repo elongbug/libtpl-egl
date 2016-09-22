@@ -969,6 +969,8 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 				  wayland_egl_buffer->wl_proxy,
 				  tbm_surface, tbm_bo_export(wayland_egl_buffer->bo));
 
+		wayland_egl_buffer->reset = TPL_FALSE;
+
 		if (wayland_egl_surface->dequeued_buffers) {
 			TPL_OBJECT_LOCK(&wayland_egl_surface->base);
 			/* Start tracking of this tbm_surface until enqueue */
