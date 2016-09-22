@@ -678,12 +678,9 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 
 	TRACE_ASYNC_END((int)wayland_egl_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
 					tbm_bo_export(wayland_egl_buffer->bo));
-	tbm_bo_handle bo_handle =
-		tbm_bo_get_handle(wayland_egl_buffer->bo , TBM_DEVICE_CPU);
 
-	if (bo_handle.ptr)
-		TPL_IMAGE_DUMP(bo_handle.ptr, surface->width, surface->height,
-					   surface->dump_count++);
+	TPL_IMAGE_DUMP(tbm_surface, surface->width, surface->height);
+
 	wl_surface_attach(wl_egl_window->surface, (void *)wayland_egl_buffer->wl_proxy,
 					  wl_egl_window->dx, wl_egl_window->dy);
 

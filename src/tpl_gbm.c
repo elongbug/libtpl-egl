@@ -339,7 +339,6 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 {
 	tpl_gbm_buffer_t *gbm_buffer = NULL;
 	tpl_gbm_surface_t *gbm_surface = NULL;
-	tbm_bo_handle bo_handle;
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
@@ -369,10 +368,7 @@ __tpl_gbm_surface_enqueue_buffer(tpl_surface_t *surface,
 	TRACE_ASYNC_END((int)gbm_buffer, "[DEQ]~[ENQ] BO_NAME:%d",
 					tbm_bo_export(gbm_buffer->bo));
 
-	bo_handle = tbm_bo_get_handle(gbm_buffer->bo, TBM_DEVICE_CPU);
-	if (bo_handle.ptr)
-		TPL_IMAGE_DUMP(bo_handle.ptr, surface->width, surface->height,
-					   surface->dump_count++);
+	TPL_IMAGE_DUMP(tbm_surface, surface->width, surface->height);
 
 	tbm_surface_internal_unref(tbm_surface);
 

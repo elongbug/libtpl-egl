@@ -12,7 +12,7 @@
 %define ENABLE_TTRACE	0
 %define ENABLE_DLOG	0
 %define ENABLE_DEFAULT_LOG	0
-%define ENABLE_PNG_DUMP	0
+%define ENABLE_DEFAULT_DUMP	0
 %define ENABLE_OBJECT_HASH_CHECK	1
 #WAYLAND-EGL VERSION MACROS
 %define WL_EGL_VERSION	1.0.0
@@ -71,10 +71,6 @@ BuildRequires:	pkgconfig(gbm)
 BuildRequires:	pkgconfig(libtdm-client)
 BuildRequires:	pkgconfig(wayland-tbm-client)
 BuildRequires:  pkgconfig(wayland-tbm-server)
-%endif
-
-%if "%{ENABLE_PNG_DUMP}" == "1"
-BuildRequires:	pkgconfig(libpng)
 %endif
 
 %if "%{ENABLE_TTRACE}" == "1"
@@ -147,8 +143,8 @@ TPL_OPTIONS=${TPL_OPTIONS}-dlog
 TPL_OPTIONS=${TPL_OPTIONS}-default_log
 %endif
 
-%if "%{ENABLE_PNG_DUMP}" == "1"
-TPL_OPTIONS=${TPL_OPTIONS}-pngdump
+%if "%{ENABLE_DEFAULT_DUMP}" == "1"
+TPL_OPTIONS=${TPL_OPTIONS}-default_dump
 %endif
 
 %if "%{ENABLE_OBJECT_HASH_CHECK}" == "1"

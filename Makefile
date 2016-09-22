@@ -47,10 +47,8 @@ endif
 ifneq ($(call is-feature-enabled,default_log),)
 	CFLAGS += -DLOG_DEFAULT_ENABLE
 endif
-ifneq ($(call is-feature-enabled,pngdump),)
-	CFLAGS += -DPNG_DUMP_ENABLE
-	CFLAGS += `pkg-config --cflags libpng`
-	LDFLAGS += `pkg-config --libs libpng`
+ifneq ($(call is-feature-enabled,default_dump),)
+	CFLAGS += -DDEFAULT_DUMP_ENABLE
 endif
 ifneq ($(call is-feature-enabled,object_hash_check),)
 	CFLAGS += -DOBJECT_HASH_CHECK
