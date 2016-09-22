@@ -869,9 +869,6 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 						  surface->display->backend.data;
 	wayland_egl_surface = (tpl_wayland_egl_surface_t *)surface->backend.data;
 
-	wl_display_dispatch_queue_pending(wayland_egl_display->wl_dpy,
-									  wayland_egl_display->wl_tbm_event_queue);
-
 	if (tbm_surface_queue_can_dequeue(wayland_egl_surface->tbm_queue, 0))
 		return TPL_ERROR_NONE;
 
