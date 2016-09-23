@@ -73,6 +73,7 @@ ifneq ($(call is-feature-enabled,winsys_wl),)
 TPL_SRCS += $(SRC_DIR)/tpl_wayland_egl.c
 TPL_SRCS += $(SRC_DIR)/tpl_wayland_vk_wsi.c
 TPL_SRCS += $(SRC_DIR)/tpl_gbm.c
+TPL_SRCS += $(SRC_DIR)/protocol/tizen-surface-protocol.c
 endif
 
 ifneq ($(call is-feature-enabled,winsys_dri2),)

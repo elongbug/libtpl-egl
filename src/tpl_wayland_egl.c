@@ -23,6 +23,7 @@
 #include <wayland-tbm-client.h>
 #include <wayland-tbm-server.h>
 #include <tdm_client.h>
+#include "protocol/tizen-surface-client.h"
 
 /* In wayland, application and compositor create its own drawing buffers. Recommend size is more than 2. */
 #define CLIENT_QUEUE_SIZE 3
@@ -38,6 +39,7 @@ struct _tpl_wayland_egl_display {
 	tdm_client *tdm_client;
 	struct wl_display *wl_dpy;
 	struct wl_event_queue *wl_tbm_event_queue;
+	struct tizen_surface_shm *tizen_surface_shm; /* used for surface buffer_flush */
 };
 
 struct _tpl_wayland_egl_surface {
@@ -50,6 +52,7 @@ struct _tpl_wayland_egl_surface {
 	tpl_bool_t vblank_done;
 	tpl_list_t *attached_buffers; /* list for tracking [ACQ]~[REL] buffers */
 	tpl_list_t *dequeued_buffers; /* list for tracking [DEQ]~[ENQ] buffers */
+	struct tizen_surface_shm_flusher *tizen_surface_shm_flusher; /* wl_proxy for buffer flush */
 };
 
 struct _tpl_wayland_egl_buffer {
@@ -67,8 +70,16 @@ static const struct wl_buffer_listener buffer_release_listener;
 static int tpl_wayland_egl_buffer_key;
 #define KEY_tpl_wayland_egl_buffer  (unsigned long)(&tpl_wayland_egl_buffer_key)
 
-static void __tpl_wayland_egl_buffer_free(tpl_wayland_egl_buffer_t
-		*wayland_egl_buffer);
+static void
+__tpl_wayland_egl_display_buffer_flusher_init(tpl_display_t *display);
+static void
+__tpl_wayland_egl_display_buffer_flusher_fini(tpl_display_t *display);
+static void
+__tpl_wayland_egl_surface_buffer_flusher_init(tpl_surface_t *surface);
+static void
+__tpl_wayland_egl_surface_buffer_flusher_fini(tpl_surface_t *surface);
+static void
+__tpl_wayland_egl_buffer_free(tpl_wayland_egl_buffer_t *wayland_egl_buffer);
 
 static TPL_INLINE tpl_wayland_egl_buffer_t *
 __tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(tbm_surface_h surface)
@@ -183,6 +194,7 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 		}
 
 		wayland_egl_display->wl_dpy = wl_dpy;
+		__tpl_wayland_egl_display_buffer_flusher_init(display);
 
 	} else {
 		TPL_ERR("Invalid native handle for display.");
@@ -240,6 +252,8 @@ __tpl_wayland_egl_display_fini(tpl_display_t *display)
 
 		if (wayland_egl_display->wl_tbm_event_queue)
 			wl_event_queue_destroy(wayland_egl_display->wl_tbm_event_queue);
+
+		__tpl_wayland_egl_display_buffer_flusher_fini(display);
 
 		wayland_egl_display->wl_tbm_event_queue = NULL;
 		wayland_egl_display->wl_tbm_client = NULL;
@@ -535,6 +549,8 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 		}
 	}
 
+	__tpl_wayland_egl_surface_buffer_flusher_init(surface);
+
 	TPL_LOG_B("WL_EGL",
 			  "[INIT] tpl_surface_t(%p) tpl_wayland_egl_surface_t(%p) tbm_queue(%p)",
 			  surface, wayland_egl_surface,
@@ -597,6 +613,8 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 				  wayland_egl_surface, wl_egl_window, wayland_egl_surface->tbm_queue);
 		tbm_surface_queue_destroy(wayland_egl_surface->tbm_queue);
 		wayland_egl_surface->tbm_queue = NULL;
+
+		__tpl_wayland_egl_surface_buffer_flusher_fini(surface);
 	}
 
 	/* When surface is destroyed, unreference tbm_surface which tracked by
@@ -923,7 +941,8 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 
 static tbm_surface_h
 __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
-										 uint64_t timeout_ns, tbm_fd *sync_fence)
+										 uint64_t timeout_ns,
+										 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
@@ -1222,4 +1241,157 @@ __cb_client_window_resize_callback(struct wl_egl_window *wl_egl_window,
 	if ((width != tbm_surface_queue_get_width(wayland_egl_surface->tbm_queue))
 			|| (height != tbm_surface_queue_get_height(wayland_egl_surface->tbm_queue)))
 		wayland_egl_surface->resized = TPL_TRUE;
+}
+
+void
+__cb_resistry_global_callback(void *data, struct wl_registry *wl_registry,
+							  uint32_t name, const char *interface,
+							  uint32_t version)
+{
+	tpl_wayland_egl_display_t *wayland_egl_display = data;
+
+	if (!strcmp(interface, "tizen_surface_shm")) {
+		wayland_egl_display->tizen_surface_shm =
+			wl_registry_bind(wl_registry,
+							 name,
+							 &tizen_surface_shm_interface,
+							 version);
+	}
+}
+
+void
+__cb_resistry_global_remove_callback(void *data, struct wl_registry *wl_registry,
+									 uint32_t name)
+{
+}
+
+static const struct wl_registry_listener registry_listener = {
+	__cb_resistry_global_callback,
+	__cb_resistry_global_remove_callback
+};
+
+static void
+__tpl_wayland_egl_display_buffer_flusher_init(tpl_display_t *display)
+{
+	tpl_wayland_egl_display_t *wayland_egl_display = display->backend.data;
+	struct wl_registry *registry = NULL;
+	struct wl_event_queue *queue = NULL;
+	int ret;
+
+	queue = wl_display_create_queue(wayland_egl_display->wl_dpy);
+	if (!queue) {
+		TPL_ERR("Failed to create wl_queue");
+		goto fini;
+	}
+
+	registry = wl_display_get_registry(wayland_egl_display->wl_dpy);
+	if (!queue) {
+		TPL_ERR("Failed to create wl_registry");
+		goto fini;
+	}
+
+	wl_proxy_set_queue((struct wl_proxy *)registry, queue);
+	if (wl_registry_add_listener(registry, &registry_listener,
+								 wayland_egl_display)) {
+		TPL_ERR("Failed to wl_registry_add_listener");
+		goto fini;
+	}
+
+	ret = wl_display_roundtrip_queue(wayland_egl_display->wl_dpy, queue);
+	if (ret) {
+		TPL_ERR("Failed to wl_display_roundtrip_queue ret:%d, err:%d", ret, errno);
+		goto fini;
+	}
+
+	/* set tizen_surface_shm's queue as client's default queue */
+	if (wayland_egl_display->tizen_surface_shm)
+		wl_proxy_set_queue((struct wl_proxy *)wayland_egl_display->tizen_surface_shm,
+						   NULL);
+
+fini:
+	if (queue)
+		wl_event_queue_destroy(queue);
+	if (registry)
+		wl_registry_destroy(registry);
+}
+
+static void
+__tpl_wayland_egl_display_buffer_flusher_fini(tpl_display_t *display)
+{
+	tpl_wayland_egl_display_t *wayland_egl_display = display->backend.data;
+
+	if (wayland_egl_display->tizen_surface_shm) {
+		tizen_surface_shm_destroy(wayland_egl_display->tizen_surface_shm);
+		wayland_egl_display->tizen_surface_shm = NULL;
+	}
+}
+
+static void __cb_tizen_surface_shm_flusher_flush_callback(void *data,
+		struct tizen_surface_shm_flusher *tizen_surface_shm_flusher)
+{
+	tpl_surface_t *surface = data;
+	tpl_wayland_egl_surface_t *wayland_egl_surface;
+	tpl_wayland_egl_display_t *wayland_egl_display;
+	int ret;
+
+	TPL_CHECK_ON_NULL_RETURN(surface);
+	wayland_egl_surface = surface->backend.data;
+	TPL_CHECK_ON_NULL_RETURN(wayland_egl_surface);
+	TPL_CHECK_ON_NULL_RETURN(surface->display);
+	wayland_egl_display = surface->display->backend.data;
+	TPL_CHECK_ON_NULL_RETURN(wayland_egl_display);
+
+	TPL_CHECK_ON_NULL_RETURN(wayland_egl_display->wl_dpy);
+	TPL_CHECK_ON_NULL_RETURN(wayland_egl_display->wl_tbm_event_queue);
+	TPL_CHECK_ON_NULL_RETURN(wayland_egl_surface->tbm_queue);
+
+	/*Fist distach panding queue for TPL
+		- dispatch buffer-release
+		- dispatch queue flush
+	*/
+	ret = wl_display_dispatch_queue_pending(wayland_egl_display->wl_dpy,
+											wayland_egl_display->wl_tbm_event_queue);
+	if (ret) {
+		TPL_ERR("Failed to wl_display_dispatch_queue_pending ret:%d, err:%d", ret,
+				errno);
+		return;
+	}
+
+	tbm_surface_queue_flush(wayland_egl_surface->tbm_queue);
+}
+
+static const struct tizen_surface_shm_flusher_listener
+	tizen_surface_shm_flusher_listener = {
+		__cb_tizen_surface_shm_flusher_flush_callback
+};
+
+static void
+__tpl_wayland_egl_surface_buffer_flusher_init(tpl_surface_t *surface)
+{
+	tpl_wayland_egl_display_t *wayland_egl_display = surface->display->backend.data;
+	tpl_wayland_egl_surface_t *wayland_egl_surface = surface->backend.data;
+	struct wl_egl_window *wl_egl_window = (struct wl_egl_window *)
+										  surface->native_handle;
+
+	if (!wayland_egl_display->tizen_surface_shm)
+		return;
+
+	wayland_egl_surface->tizen_surface_shm_flusher =
+		tizen_surface_shm_get_flusher(wayland_egl_display->tizen_surface_shm,
+									  wl_egl_window->surface);
+	tizen_surface_shm_flusher_add_listener(
+		wayland_egl_surface->tizen_surface_shm_flusher,
+		&tizen_surface_shm_flusher_listener, surface);
+}
+
+static void
+__tpl_wayland_egl_surface_buffer_flusher_fini(tpl_surface_t *surface)
+{
+	tpl_wayland_egl_surface_t *wayland_egl_surface = surface->backend.data;
+
+	if (wayland_egl_surface->tizen_surface_shm_flusher) {
+		tizen_surface_shm_flusher_destroy(
+			wayland_egl_surface->tizen_surface_shm_flusher);
+		wayland_egl_surface->tizen_surface_shm_flusher = NULL;
+	}
 }
