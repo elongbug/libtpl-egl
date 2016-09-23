@@ -636,14 +636,17 @@ __tpl_wayland_egl_surface_wait_vblank(tpl_surface_t *surface)
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
 		(tpl_wayland_egl_surface_t *)surface->backend.data;
 
+	TPL_OBJECT_UNLOCK(surface);
 	do {
 		tdm_err = tdm_client_handle_events(wayland_egl_display->tdm_client);
 
 		if (tdm_err != TDM_ERROR_NONE) {
 			TPL_ERR("Failed to tdm_client_handle_events.");
+			break;
 		}
 
 	} while (wayland_egl_surface->vblank_done == TPL_FALSE);
+	TPL_OBJECT_LOCK(surface);
 }
 
 static void
