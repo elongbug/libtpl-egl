@@ -582,7 +582,8 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 		}
 
 		wl_display_flush(wayland_egl_display->wl_dpy);
-		wl_display_dispatch_pending(wayland_egl_display->wl_dpy);
+		wl_display_dispatch_queue_pending(wayland_egl_display->wl_dpy,
+										  wayland_egl_display->wl_tbm_event_queue);
 
 		if (wayland_egl_surface->tdm_vblank) {
 			TPL_LOG_B("WL_EGL",
