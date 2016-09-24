@@ -48,8 +48,15 @@ struct _tpl_wayland_vk_wsi_surface {
 	pthread_mutex_t free_queue_mutex;
 	pthread_cond_t free_queue_cond;
 
+	/* tbm_surface list */
+	tpl_list_t vblank_list;
+	pthread_mutex_t vblank_list_mutex;
+
+	tpl_bool_t vblank_done;
+
 	tpl_worker_surface_t worker_surface;
 #endif
+	int present_mode;
 };
 
 struct _tpl_wayland_vk_wsi_buffer {
@@ -167,7 +174,7 @@ __tpl_wayland_vk_wsi_display_init(tpl_display_t *display)
 	}
 
 	wayland_vk_wsi_display->surface_capabilities.min_buffer = 2;
-	wayland_vk_wsi_display->surface_capabilities.max_buffer = CLIENT_QUEUE_SIZE;;
+	wayland_vk_wsi_display->surface_capabilities.max_buffer = CLIENT_QUEUE_SIZE;
 
 	display->backend.data = wayland_vk_wsi_display;
 
@@ -270,6 +277,30 @@ __tpl_wayland_vk_wsi_display_query_window_supported_buffer_count(
 	return TPL_ERROR_NONE;
 }
 
+static tpl_result_t
+__tpl_wayland_vk_wsi_display_query_window_supported_present_modes(
+	tpl_display_t *display,
+	tpl_handle_t window, int *modes)
+{
+	tpl_wayland_vk_wsi_display_t *wayland_vk_wsi_display = NULL;
+
+	TPL_ASSERT(display);
+	TPL_ASSERT(window);
+
+	wayland_vk_wsi_display = (tpl_wayland_vk_wsi_display_t *)display->backend.data;
+
+	if (!wayland_vk_wsi_display) return TPL_ERROR_INVALID_OPERATION;
+
+	if (modes) {
+		*modes = TPL_DISPLAY_PRESENT_MODE_MAILBOX | TPL_DISPLAY_PRESENT_MODE_IMMEDIATE;
+#if USE_WORKER_THREAD == 1
+		if (__tpl_worker_support_vblank() == TPL_TRUE)
+			*modes |= TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED;
+#endif
+	}
+
+	return TPL_ERROR_NONE;
+}
 
 static tpl_result_t
 __tpl_wayland_vk_wsi_surface_init(tpl_surface_t *surface)
@@ -324,6 +355,7 @@ __tpl_wayland_vk_wsi_surface_commit_buffer(tpl_surface_t *surface,
 	TPL_ASSERT(surface->display);
 	TPL_ASSERT(surface->display->native_handle);
 	TPL_ASSERT(tbm_surface);
+	TPL_ASSERT(tbm_surface_internal_is_valid(tbm_surface));
 
 	struct wl_surface *wl_sfc = NULL;
 	struct wl_callback *frame_callback = NULL;
@@ -675,21 +707,46 @@ __tpl_wayland_vk_wsi_process_draw_done(tpl_surface_t *surface,
 									   tbm_surface_h tbm_surface,
 									   tpl_result_t result)
 {
+	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface = NULL;
 	tpl_wayland_vk_wsi_buffer_t *wayland_vk_wsi_buffer = NULL;
 
-	/*TPL_ASSERT(surface);*/
+	TPL_ASSERT(surface);
 	TPL_ASSERT(tbm_surface);
+	TPL_ASSERT(tbm_surface_internal_is_valid(tbm_surface));
 
+	wayland_vk_wsi_surface =
+		(tpl_wayland_vk_wsi_surface_t *)surface->backend.data;
 	wayland_vk_wsi_buffer =
 		__tpl_wayland_vk_wsi_get_wayland_buffer_from_tbm_surface(tbm_surface);
 
+	TPL_ASSERT(wayland_vk_wsi_surface);
 	TPL_ASSERT(wayland_vk_wsi_buffer);
+
+	/* TODO: send buffer to server immediate when server support present mode */
 
 	close(wayland_vk_wsi_buffer->wait_sync);
 	wayland_vk_wsi_buffer->wait_sync = -1;
 
-	/* TODO: check present mode and prepare vblank */
-	__tpl_wayland_vk_wsi_surface_commit_buffer(surface, tbm_surface);
+	if (wayland_vk_wsi_surface->present_mode == TPL_DISPLAY_PRESENT_MODE_FIFO) {
+		pthread_mutex_lock(&wayland_vk_wsi_surface->vblank_list_mutex);
+		/* unref in tpl list remove callback
+		   (__tpl_wayland_vk_wsi_buffer_remove_from_vblank_list) */
+		tbm_surface_internal_ref(tbm_surface);
+		__tpl_list_push_back(&wayland_vk_wsi_surface->vblank_list, tbm_surface);
+		pthread_mutex_unlock(&wayland_vk_wsi_surface->vblank_list_mutex);
+	} else if (wayland_vk_wsi_surface->present_mode == TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED &&
+			   wayland_vk_wsi_surface->vblank_done == TPL_FALSE) {
+		/* if can't process previous vblank event, send buffer immediately */
+		pthread_mutex_lock(&wayland_vk_wsi_surface->vblank_list_mutex);
+		/* unref in tpl list remove callback
+		   (__tpl_wayland_vk_wsi_buffer_remove_from_vblank_list) */
+		tbm_surface_internal_ref(tbm_surface);
+		__tpl_list_push_back(&wayland_vk_wsi_surface->vblank_list, tbm_surface);
+		wayland_vk_wsi_surface->vblank_done = TPL_TRUE;
+		pthread_mutex_unlock(&wayland_vk_wsi_surface->vblank_list_mutex);
+	} else {
+		__tpl_wayland_vk_wsi_surface_commit_buffer(surface, tbm_surface);
+	}
 }
 
 static int
@@ -709,6 +766,43 @@ __tpl_wayland_vk_wsi_draw_wait_fd_get(tpl_surface_t *surface,
 	return wayland_vk_wsi_buffer->wait_sync;
 }
 
+static void
+__tpl_wayland_vk_wsi_buffer_remove_from_vblank_list(void *data)
+{
+	tbm_surface_h tbm_surface = data;
+	tbm_surface_internal_unref(tbm_surface);
+}
+
+static void
+__tpl_wayland_vk_wsi_vblank(tpl_surface_t *surface, unsigned int sequence,
+							unsigned int tv_sec, unsigned int tv_usec)
+{
+	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface;
+	tbm_surface_h tbm_surface;
+
+	TPL_ASSERT(surface);
+
+	wayland_vk_wsi_surface =
+		(tpl_wayland_vk_wsi_surface_t *) surface->backend.data;
+
+	TPL_ASSERT(wayland_vk_wsi_surface);
+
+	if ((wayland_vk_wsi_surface->present_mode &
+		 (TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED)) == 0)
+		return;
+
+	pthread_mutex_lock(&wayland_vk_wsi_surface->vblank_list_mutex);
+	tbm_surface = __tpl_list_pop_front(&wayland_vk_wsi_surface->vblank_list,
+									   __tpl_wayland_vk_wsi_buffer_remove_from_vblank_list);
+	pthread_mutex_unlock(&wayland_vk_wsi_surface->vblank_list_mutex);
+
+	 if (tbm_surface_internal_is_valid(tbm_surface)) {
+		__tpl_wayland_vk_wsi_surface_commit_buffer(surface, tbm_surface);
+		wayland_vk_wsi_surface->vblank_done = TPL_TRUE;
+	} else {
+		wayland_vk_wsi_surface->vblank_done = TPL_FALSE;
+	}
+}
 #endif
 
 static tpl_result_t
@@ -735,6 +829,26 @@ __tpl_wayland_vk_wsi_surface_create_swapchain(tpl_surface_t *surface,
 		TPL_ERR("Invalid buffer_count!");
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
+
+	/* TODO: check server supported present modes */
+	switch (present_mode) {
+#if USE_WORKER_THREAD == 1
+		case TPL_DISPLAY_PRESENT_MODE_FIFO:
+		case TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED:
+		if (__tpl_worker_support_vblank() == TPL_FALSE) {
+			TPL_ERR("Unsupported present mode: %d, worker not support vblank", present_mode);
+			return TPL_ERROR_INVALID_PARAMETER;
+		}
+#endif
+		case TPL_DISPLAY_PRESENT_MODE_MAILBOX:
+		case TPL_DISPLAY_PRESENT_MODE_IMMEDIATE:
+			break;
+		default:
+			TPL_ERR("Unsupported present mode: %d", present_mode);
+			return TPL_ERROR_INVALID_PARAMETER;
+	}
+
+	wayland_vk_wsi_surface->present_mode = present_mode;
 
 	wayland_vk_wsi_surface->tbm_queue = tbm_surface_queue_create(buffer_count,
 										width,
@@ -764,6 +878,13 @@ __tpl_wayland_vk_wsi_surface_create_swapchain(tpl_surface_t *surface,
 		__tpl_wayland_vk_wsi_process_draw_done;
 	wayland_vk_wsi_surface->worker_surface.draw_wait_fd_get =
 		__tpl_wayland_vk_wsi_draw_wait_fd_get;
+	if ((wayland_vk_wsi_surface->present_mode &
+		 (TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED))) {
+		wayland_vk_wsi_surface->worker_surface.vblank =
+			__tpl_wayland_vk_wsi_vblank;
+		pthread_mutex_init(&wayland_vk_wsi_surface->vblank_list_mutex, NULL);
+		__tpl_list_init(&wayland_vk_wsi_surface->vblank_list);
+	}
 
 	__tpl_worker_surface_list_insert(&wayland_vk_wsi_surface->worker_surface);
 #endif
@@ -795,6 +916,15 @@ __tpl_wayland_vk_wsi_surface_destroy_swapchain(tpl_surface_t *surface)
 	}
 
 #if USE_WORKER_THREAD == 1
+	if ((wayland_vk_wsi_surface->present_mode &
+		 (TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED))) {
+		pthread_mutex_lock(&wayland_vk_wsi_surface->vblank_list_mutex);
+		__tpl_list_fini(&wayland_vk_wsi_surface->vblank_list,
+						__tpl_wayland_vk_wsi_buffer_remove_from_vblank_list);
+		pthread_mutex_unlock(&wayland_vk_wsi_surface->vblank_list_mutex);
+		pthread_mutex_destroy(&wayland_vk_wsi_surface->vblank_list_mutex);
+	}
+
 	pthread_cond_destroy(&wayland_vk_wsi_surface->free_queue_cond);
 	pthread_mutex_destroy(&wayland_vk_wsi_surface->free_queue_mutex);
 #endif
@@ -849,6 +979,8 @@ __tpl_display_init_backend_wayland_vk_wsi(tpl_display_backend_t *backend)
 	backend->filter_config = __tpl_wayland_vk_wsi_display_filter_config;
 	backend->query_window_supported_buffer_count =
 		__tpl_wayland_vk_wsi_display_query_window_supported_buffer_count;
+	backend->query_window_supported_present_modes =
+		__tpl_wayland_vk_wsi_display_query_window_supported_present_modes;
 }
 
 void
