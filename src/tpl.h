@@ -598,14 +598,16 @@ tpl_surface_get_post_interval(tpl_surface_t *surface);
  * @param width width to the swapchain buffer.
  * @param height height to the swapchain buffer.
  * @param buffer_count buffer count to the swapchain.
+ * @param buffer present mode to the swapchain.
  * @return TPL_ERROR_NONE if this function is supported and the tpl_surface is valid, TPL_ERROR otherwise.
  *
  * @see tpl_surface_get_swapchain_buffers()
  * @see tpl_surface_destroy_swapchain()
+ * @see tpl_display_present_mode_t
  */
 tpl_result_t
 tpl_surface_create_swapchain(tpl_surface_t *surface, tbm_format format,
-							 int width, int height, int buffer_count);
+							 int width, int height, int buffer_count, int present_mode);
 
 /**
  * Destroy a swapchain for the given TPL surface.
@@ -726,4 +728,69 @@ tpl_surface_set_frontbuffer_mode(tpl_surface_t *surface, tpl_bool_t set);
 tpl_result_t
 tpl_surface_set_reset_cb(tpl_surface_t *surface,
 						 void* data, tpl_surface_cb_func_t reset_cb);
+
+/**
+ * Present mode types.
+ *
+ * @TPL_DISPLAY_MODE_IMMEDIATE_KHR: The presentation engine does not wait for
+ *		a vertical blanking period to update the current image, meaning this
+ *		mode may result in visible tearing.
+ *		No internal queuing of presentation requests is needed,
+ *		as the requests are applied immediately.
+ * @TPL_DISPLAY_MODE_MAILBOX_KHR: The presentation engine waits for the next
+ *		vertical blanking period to update the current image.
+ *		Tearing cannot be observed. An internal single-entry queue is used
+ *		to hold pending presentation requests. If the queue is full when
+ *		a new presentation request is received, the new request replaces the
+ *		existing entry, and any images associated with the prior entry become
+ *		available for re-use by the application. One request is removed from
+ *		the queue and processed during each vertical blanking period in
+ *		which the queue is non-empty.
+ * @TPL_DISPLAY_MODE_FIFO_KHR: The presentation engine waits for the next
+ *		vertical blanking period to update the current image.
+ *		Tearing cannot be observed. An internal queue is used to hold pending
+ *		presentation requests. New requests are appended to the end of the queue,
+ *		and one request is removed from the beginning of the queue and processed
+ *		during each vertical blanking period in which the queue is non-empty.
+ *		This is the only value of presentMode that is required to be supported.
+ * @TPL_DISPLAY_MODE_FIFO_RELAXED_KHR: The presentation engine generally waits
+ *		for the next vertical blanking period to update the current image.
+ *		If a vertical blanking period has already passed since the last update
+ *		of the current image then the presentation engine does not wait for
+ *		another vertical blanking period for the update, meaning this mode may
+ *		result in visible tearing in this case. This mode is useful for reducing
+ *		visual stutter with an application that will mostly present
+ *		a new image before the next vertical blanking period, but may
+ *		occasionally be late, and present a new image just after the next
+ *		vertical blanking period.
+ *		An internal queue is used to hold pending presentation requests.
+ *		New requests are appended to the end of the queue,
+ *		and one request is removed from the beginning of the queue and processed
+ *		during or after each vertical blanking period in which the queue is non-empty.
+ * default TPL_DISPLAY_PRESENT_MODE_MAILBOX
+ *
+ * @see tpl_display_query_supported_present_mode_from_native_window
+ */
+typedef enum {
+	TPL_DISPLAY_PRESENT_MODE_MAILBOX = 1,
+	TPL_DISPLAY_PRESENT_MODE_FIFO = 2,
+	TPL_DISPLAY_PRESENT_MODE_IMMEDIATE = 4,
+	TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED = 8,
+	TPL_DISPLAY_PRESENT_MODE_MAX,
+} tpl_display_present_mode_t;
+
+/**
+ * Get the present mode capability of the given native window.
+ *
+ * @param display display used for query.
+ * @param window window used for query the present mode capability
+ * @paran modes pointer to receive present modes bitwise or.
+ * @return TPL_ERROR_NONE if this function is supported and the window is valid, TPL_ERROR otherwise.
+ *
+ * @see tpl_display_present_mode_t
+ */
+tpl_result_t
+tpl_display_query_supported_present_modes_from_native_window(tpl_display_t *display,
+															 tpl_handle_t window,
+															 int *modes);
 #endif /* TPL_H */

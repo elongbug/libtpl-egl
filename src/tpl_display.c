@@ -190,3 +190,17 @@ tpl_display_get_buffer_from_native_pixmap(tpl_display_t *display,
 
 	return display->backend.get_buffer_from_native_pixmap(pixmap);
 }
+
+tpl_result_t
+tpl_display_query_supported_present_modes_from_native_window(tpl_display_t *display,
+															 tpl_handle_t window,
+															 int *modes)
+{
+	if (!display->backend.query_window_supported_present_modes) {
+		TPL_ERR("Backend for display has not been initialized!");
+		return TPL_ERROR_INVALID_OPERATION;
+	}
+
+	return display->backend.query_window_supported_present_modes(display, window,
+																 modes);
+}

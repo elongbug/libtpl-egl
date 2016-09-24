@@ -714,7 +714,7 @@ __tpl_wayland_vk_wsi_draw_wait_fd_get(tpl_surface_t *surface,
 static tpl_result_t
 __tpl_wayland_vk_wsi_surface_create_swapchain(tpl_surface_t *surface,
 		tbm_format format, int width,
-		int height, int buffer_count)
+		int height, int buffer_count, int present_mode)
 {
 	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface = NULL;
 	tpl_wayland_vk_wsi_display_t *wayland_vk_wsi_display = NULL;
