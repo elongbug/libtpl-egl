@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sys/eventfd.h>
 #include <sys/epoll.h>
+#include <tdm_client.h>
 
 #define TPL_ERR_ERRNO(f, x...)								\
 	do { int err = errno; char buf[256] = {0,};				\
@@ -27,7 +28,14 @@ static struct {
 	pthread_t worker_id;
 	tpl_list_t surface_list;
 	pthread_mutex_t surface_mutex;
+	tpl_bool_t support_vblank;
 } tpl_worker_thread;
+
+tpl_bool_t
+__tpl_worker_support_vblank()
+{
+	return tpl_worker_thread.support_vblank;
+}
 
 void
 __tpl_worker_surface_list_insert(tpl_worker_surface_t *surface)
@@ -135,6 +143,51 @@ __tpl_worker_new_buffer_notify(tpl_worker_surface_t *surface)
 	pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
 }
 
+static tpl_bool_t
+__tpl_worker_regist_vblank_handler(tdm_client_vblank *tdm_vblank);
+
+static void
+__tpl_worker_cb_vblank(tdm_client_vblank *tdm_vblank, tdm_error error,
+					   unsigned int sequence, unsigned int tv_sec,
+					   unsigned int tv_usec, void *user_data)
+{
+	tpl_list_node_t *trail;
+
+	if (pthread_mutex_lock(&tpl_worker_thread.surface_mutex) != 0) {
+		TPL_ERR_ERRNO("surface list mutex lock failed");
+		return;
+	}
+
+	for (trail = __tpl_list_get_front_node(&tpl_worker_thread.surface_list);
+		 trail != NULL;
+		 trail = __tpl_list_node_next(trail)) {
+		tpl_worker_surface_t *surface;
+
+		surface = __tpl_list_node_get_data(trail);
+		if (surface->vblank)
+			surface->vblank(surface->surface, sequence, tv_sec, tv_usec);
+	}
+	pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
+
+	__tpl_worker_regist_vblank_handler(tdm_vblank);
+}
+
+static tpl_bool_t
+__tpl_worker_regist_vblank_handler(tdm_client_vblank *tdm_vblank)
+{
+	tdm_error tdm_err;
+
+	tdm_err = tdm_client_vblank_wait(tdm_vblank,
+									 1, /* interval */
+									 __tpl_worker_cb_vblank, /* handler */
+									 NULL);
+	if (tdm_err != TDM_ERROR_NONE) {
+		TPL_ERR ("Failed to tdm_client_wait_vblank. error:%d", tdm_err);
+		return TPL_FALSE;
+	}
+	return TPL_TRUE;
+}
+
 static int
 __tpl_worker_prepare_event_fd(int epoll_fd)
 {
@@ -158,12 +211,79 @@ __tpl_worker_prepare_event_fd(int epoll_fd)
 	return event_fd;
 }
 
+static tpl_bool_t
+__tpl_worker_prepare_vblank(int epoll_fd, tdm_client **ret_client, tdm_client_vblank **ret_vblank)
+{
+	tdm_error tdm_err;
+	tdm_client *tdm_client = NULL;
+	tdm_client_output *tdm_output = NULL;
+	tdm_client_vblank *tdm_vblank = NULL;
+	int tdm_fd, ret;
+	struct epoll_event event;
+
+	TPL_ASSERT(ret_client);
+	TPL_ASSERT(ret_vblank);
+
+	tdm_client = tdm_client_create(&tdm_err);
+	if (!tdm_client) {
+		TPL_ERR("tdm_client_create failed | tdm_err: %d\n", tdm_err);
+		goto error_cleanup;
+	}
+
+	tdm_err = tdm_client_get_fd(tdm_client, &tdm_fd);
+	if (tdm_err != TDM_ERROR_NONE || tdm_fd < 0) {
+		TPL_ERR("tdm_client_get_fd failed | tdm_err: %d\n", tdm_err);
+		goto error_cleanup;
+	}
+
+	tdm_output = tdm_client_get_output(tdm_client, "primary", &tdm_err);
+	if (!tdm_output) {
+		TPL_ERR("Failed to get tdm client output. tdm_err(%d)", tdm_err);
+		goto error_cleanup;
+	}
+
+	tdm_vblank = tdm_client_output_create_vblank(tdm_output, &tdm_err);
+	if (!tdm_vblank) {
+		TPL_ERR("Failed to create tdm vblank output. tdm_err(%d)", tdm_err);
+		goto error_cleanup;
+	}
+
+	tdm_client_vblank_set_enable_fake(tdm_vblank, 1);
+	tdm_client_vblank_set_sync(tdm_vblank, 0);
+
+	if (__tpl_worker_regist_vblank_handler(tdm_vblank) == TPL_FALSE)
+		goto error_cleanup;
+
+	event.events = EPOLLIN;
+	event.data.ptr = tdm_client;
+	ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, tdm_fd, &event);
+	if (ret != 0) {
+		TPL_ERR_ERRNO("tdm epoll ctl epoll_fd: %d, tdm_fd: %d.",
+					  epoll_fd, tdm_fd);
+		goto error_cleanup;
+	}
+
+	*ret_vblank = tdm_vblank;
+	*ret_client = tdm_client;
+
+	return TPL_TRUE;
+
+error_cleanup:
+	if (tdm_vblank)
+		tdm_client_vblank_destroy(tdm_vblank);
+	if (tdm_client)
+		tdm_client_destroy(tdm_client);
+	return TPL_FALSE;
+}
+
 static void *
 __tpl_worker_thread_loop(void *arg)
 {
 #define EPOLL_MAX_SIZE 100
 	int ret, epoll_fd = epoll_create(EPOLL_MAX_SIZE);
 	struct epoll_event ev_list[EPOLL_MAX_SIZE];
+	tdm_client *tdm_client = NULL;
+	tdm_client_vblank *tdm_vblank = NULL;
 
 	if (epoll_fd == -1) {
 		TPL_ERR_ERRNO("epoll create failed");
@@ -174,6 +294,10 @@ __tpl_worker_thread_loop(void *arg)
 	tpl_worker_thread.event_fd = __tpl_worker_prepare_event_fd(epoll_fd);
 	if (tpl_worker_thread.event_fd == -1)
 		goto cleanup;
+
+	/* vblank fd */
+	if (__tpl_worker_prepare_vblank(epoll_fd, &tdm_client, &tdm_vblank))
+		tpl_worker_thread.support_vblank = TPL_TRUE;
 
 	while(tpl_worker_thread.running) {
 		int i;
@@ -218,6 +342,10 @@ __tpl_worker_thread_loop(void *arg)
 						break;
 					}
 				}
+			} else if (ev_list[i].data.ptr == tdm_client) {
+				/* vblank */
+				tdm_client_handle_events(tdm_client);
+				/* process in __tpl_worker_cb_vblank */
 			} else {
 				/* draw done */
 				tpl_worker_surface_t *surface = ev_list[i].data.ptr;
@@ -265,6 +393,11 @@ __tpl_worker_thread_loop(void *arg)
 
 cleanup:
 	/* thread cleanup */
+	if (tdm_vblank)
+		tdm_client_vblank_destroy(tdm_vblank);
+	if (tdm_client)
+		tdm_client_destroy(tdm_client);
+
 	close(epoll_fd);
 	close(tpl_worker_thread.event_fd);
 	tpl_worker_thread.event_fd = -1;
@@ -280,6 +413,7 @@ __tpl_worker_init(void)
 	 * with pthread_once
 	 */
 	tpl_worker_thread.running = 1;
+	tpl_worker_thread.support_vblank = TPL_FALSE;
 
 	if (pthread_mutex_init(&tpl_worker_thread.surface_mutex, NULL) != 0) {
 		TPL_ERR_ERRNO("surface list mutex init failed");
