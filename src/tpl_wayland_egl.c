@@ -849,17 +849,30 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 static tpl_bool_t
 __tpl_wayland_egl_surface_validate(tpl_surface_t *surface)
 {
+	tpl_bool_t retval = TPL_TRUE;
+
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
 
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
 		(tpl_wayland_egl_surface_t *)surface->backend.data;
 
-	if (wayland_egl_surface->resized ||
-			wayland_egl_surface->reset)
-		return TPL_FALSE;
+	retval = !(wayland_egl_surface->reset || wayland_egl_surface->resized);
 
-	return TPL_TRUE;
+	/* TODO */
+	/* Be planning to revise below line in future commits.
+	   - It is under development so that EGL can realize tbm_surface_queue_reset
+	     immediately.
+	 */
+
+	/* The tbm_surface_queue_flush (which is occured by ACTIVE, DEACTIVE events)
+	 * only occured in __tpl_wayland_egl_surface_wait_dequeable.
+	 * After tpl_surface_dequeue_buffer(), tpl_surface has to inform to frontend
+	 * surface was reset. (retval)
+	 * The reset flag will be set to TPL_FALSE only here after inform it. */
+	wayland_egl_surface->reset = TPL_FALSE;
+
+	return retval;
 }
 
 static tpl_result_t
@@ -872,6 +885,9 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 	wayland_egl_display = (tpl_wayland_egl_display_t *)
 						  surface->display->backend.data;
 	wayland_egl_surface = (tpl_wayland_egl_surface_t *)surface->backend.data;
+
+	wl_display_dispatch_queue_pending(wayland_egl_display->wl_dpy,
+									  wayland_egl_display->wl_tbm_event_queue);
 
 	if (tbm_surface_queue_can_dequeue(wayland_egl_surface->tbm_queue, 0))
 		return TPL_ERROR_NONE;
@@ -937,12 +953,12 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 		format = tbm_surface_queue_get_format(wayland_egl_surface->tbm_queue);
 
 		tbm_surface_queue_reset(wayland_egl_surface->tbm_queue, width, height, format);
-		wayland_egl_surface->resized = TPL_FALSE;
 		surface->width = width;
 		surface->height = height;
-	}
 
-	wayland_egl_surface->reset = TPL_FALSE;
+		wayland_egl_surface->resized = TPL_FALSE;
+		wayland_egl_surface->reset = TPL_FALSE;
+	}
 
 	if (__tpl_wayland_egl_surface_wait_dequeuable(surface)) {
 		TPL_ERR("Failed to wait dequeeable buffer");
@@ -1013,18 +1029,8 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 
 	/* reset flag is to check whether it is the buffer before tbm_surface_queue is reset or not. */
 	wayland_egl_buffer->reset = TPL_FALSE;
-	wayland_egl_surface->current_buffer = tbm_surface;
 
-	/*
-	 * Only when the tbm_surface which it dequeued after tbm_surface_queue_dequeue
-	 * was called is not reused one, the following flag 'reset' has to
-	 * initialize to TPL_FALSE.
-	 *
-	 * If this flag initialized before tbm_surface_queue_dequeue, it cause
-	 * the problem that return TPL_FALSE in tpl_surface_validate() in spite of
-	 * EGL already has valid buffer.
-	 */
-	wayland_egl_surface->reset = TPL_FALSE;
+	wayland_egl_surface->current_buffer = tbm_surface;
 
 	__tpl_wayland_egl_set_wayland_buffer_to_tbm_surface(tbm_surface,
 			wayland_egl_buffer);
