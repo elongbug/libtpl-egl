@@ -47,7 +47,7 @@ struct _tpl_wayland_egl_surface {
 	tbm_surface_queue_h tbm_queue;
 	tbm_surface_h current_buffer;
 	tpl_bool_t resized;
-	tpl_bool_t reset;          /* TRUE if queue reseted by external */
+	tpl_bool_t reset;	/* TRUE if queue reseted by external  */
 	tdm_client_vblank *tdm_vblank; /* vblank object for each wl_surface */
 	tpl_bool_t vblank_done;
 	tpl_list_t *attached_buffers; /* list for tracking [ACQ]~[REL] buffers */
@@ -400,8 +400,14 @@ static void
 __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 									  void *data)
 {
-	tpl_wayland_egl_surface_t *wayland_egl_surface =
-		(tpl_wayland_egl_surface_t *)data;
+	tpl_surface_t *surface = NULL;
+	tpl_wayland_egl_surface_t *wayland_egl_surface = NULL;
+
+	surface = (tpl_surface_t *)data;
+	TPL_CHECK_ON_NULL_RETURN(surface);
+
+	wayland_egl_surface = (tpl_wayland_egl_surface_t *)surface->backend.data;
+	TPL_CHECK_ON_NULL_RETURN(wayland_egl_surface);
 
 	if (!wayland_egl_surface) return;
 
@@ -409,9 +415,9 @@ __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 			  "[QUEUE_RESET_CB] tpl_wayland_egl_surface_t(%p) surface_queue(%p)",
 			  data, surface_queue);
 
-	wayland_egl_surface->reset = TPL_TRUE;
-
 	TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+
+	wayland_egl_surface->reset = TPL_TRUE;
 
 	/* Set the reset flag of the buffers which attached but not released to TPL_TRUE. */
 	__tpl_wayland_egl_buffer_set_reset_flag(wayland_egl_surface->attached_buffers);
@@ -420,6 +426,9 @@ __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 	__tpl_wayland_egl_buffer_set_reset_flag(wayland_egl_surface->dequeued_buffers);
 
 	TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+
+	if (surface->reset_cb)
+		surface->reset_cb(surface->reset_data);
 }
 
 static tpl_result_t
@@ -487,6 +496,7 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 	surface->backend.data = (void *)wayland_egl_surface;
 	wayland_egl_surface->tbm_queue = NULL;
 	wayland_egl_surface->resized = TPL_FALSE;
+	wayland_egl_surface->reset = TPL_FALSE;
 	wayland_egl_surface->vblank_done = TPL_TRUE;
 	wayland_egl_surface->current_buffer = NULL;
 
@@ -526,7 +536,7 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 	/* Set reset_callback to tbm_queue */
 	tbm_surface_queue_add_reset_cb(wayland_egl_surface->tbm_queue,
 								   __cb_tbm_surface_queue_reset_callback,
-								   (void *)wayland_egl_surface);
+								   (void *)surface);
 
 
 	surface->width = wl_egl_window->width;
@@ -875,20 +885,7 @@ __tpl_wayland_egl_surface_validate(tpl_surface_t *surface)
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
 		(tpl_wayland_egl_surface_t *)surface->backend.data;
 
-	retval = !(wayland_egl_surface->reset || wayland_egl_surface->resized);
-
-	/* TODO */
-	/* Be planning to revise below line in future commits.
-	   - It is under development so that EGL can realize tbm_surface_queue_reset
-	     immediately.
-	 */
-
-	/* The tbm_surface_queue_flush (which is occured by ACTIVE, DEACTIVE events)
-	 * only occured in __tpl_wayland_egl_surface_wait_dequeable.
-	 * After tpl_surface_dequeue_buffer(), tpl_surface has to inform to frontend
-	 * surface was reset. (retval)
-	 * The reset flag will be set to TPL_FALSE only here after inform it. */
-	wayland_egl_surface->reset = TPL_FALSE;
+	retval = !(wayland_egl_surface->resized || wayland_egl_surface->reset);
 
 	return retval;
 }
@@ -1006,6 +1003,7 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 				  tbm_surface, tbm_bo_export(wayland_egl_buffer->bo));
 
 		wayland_egl_buffer->reset = TPL_FALSE;
+		wayland_egl_surface->reset = TPL_FALSE;
 
 		if (wayland_egl_surface->dequeued_buffers) {
 			TPL_OBJECT_LOCK(&wayland_egl_surface->base);
@@ -1050,6 +1048,7 @@ __tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
 	wayland_egl_buffer->reset = TPL_FALSE;
 
 	wayland_egl_surface->current_buffer = tbm_surface;
+	wayland_egl_surface->reset = TPL_FALSE;
 
 	__tpl_wayland_egl_set_wayland_buffer_to_tbm_surface(tbm_surface,
 			wayland_egl_buffer);

@@ -124,6 +124,11 @@ typedef struct _tpl_surface tpl_surface_t;
 typedef void (*tpl_free_func_t)(void *data);
 
 /**
+ * Function type used for registering callback function.
+ */
+typedef void (*tpl_surface_cb_func_t)(void *data);
+
+/**
  * Object types.
  *
  * @see tpl_object_get_type()
@@ -695,6 +700,29 @@ tbm_surface_h
 tpl_display_get_buffer_from_native_pixmap(tpl_display_t *display,
 										  tpl_handle_t pixmap);
 
+/**
+ * Set frontbuffer mode to render to only frontbuffer.
+ *
+ * @param surface surface to set mode.
+ * @param set TPL_TRUE if user want to set tpl_surface to frontbuffer mode.
+ * @return TPL_ERROR_NONE if tpl_surface is valid.
+ */
 tpl_result_t
 tpl_surface_set_frontbuffer_mode(tpl_surface_t *surface, tpl_bool_t set);
+
+/**
+ * Set callback function to tpl_surface for receiving reset information.
+ *
+ * This function should be called when after tpl_surface_create() if
+ * frontend surface want to know that if surface reset or not.
+ *
+ * @param surface surface to set callback. It has to be not NULL.
+ * @param data data to be delivered to callback function.
+ * @param reset_cb pointer value of callback funtion.
+ *  - It can be NULL if frontend wants to delete callback function.
+ * @return TPL_ERROR_NONE if tpl_surface is valid.
+ */
+tpl_result_t
+tpl_surface_set_reset_cb(tpl_surface_t *surface,
+						 void* data, tpl_surface_cb_func_t reset_cb);
 #endif /* TPL_H */

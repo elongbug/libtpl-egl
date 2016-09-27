@@ -405,3 +405,20 @@ tpl_surface_set_frontbuffer_mode(tpl_surface_t *surface, tpl_bool_t set)
 			  surface, set ? "ACTIVATED" : "DEACTIVATED");
 	return ret;
 }
+
+tpl_result_t
+tpl_surface_set_reset_cb(tpl_surface_t *surface, void *data, tpl_surface_cb_func_t reset_cb)
+{
+	tpl_result_t ret = TPL_ERROR_NONE;
+
+	if (!surface)
+	{
+		TPL_ERR("Invalid surface!");
+		return TPL_ERROR_INVALID_PARAMETER;
+	}
+
+	surface->reset_data = data;
+	surface->reset_cb = reset_cb;
+
+	return ret;
+}

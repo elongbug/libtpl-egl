@@ -132,6 +132,10 @@ struct _tpl_surface {
 	/*For frontbuffer extension*/
 	tpl_bool_t is_frontbuffer_mode;
 	tbm_surface_h frontbuffer;
+
+	/* Surface reset callback */
+	tpl_surface_cb_func_t reset_cb;
+	void* reset_data;
 };
 
 /*******************************************************************************
