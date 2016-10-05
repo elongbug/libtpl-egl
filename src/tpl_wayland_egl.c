@@ -1298,7 +1298,7 @@ __tpl_wayland_egl_display_buffer_flusher_init(tpl_display_t *display)
 	}
 
 	ret = wl_display_roundtrip_queue(wayland_egl_display->wl_dpy, queue);
-	if (ret) {
+	if (ret == -1) {
 		TPL_ERR("Failed to wl_display_roundtrip_queue ret:%d, err:%d", ret, errno);
 		goto fini;
 	}
