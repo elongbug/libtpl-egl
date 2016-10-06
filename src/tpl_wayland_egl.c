@@ -1350,7 +1350,7 @@ static void __cb_tizen_surface_shm_flusher_flush_callback(void *data,
 	*/
 	ret = wl_display_dispatch_queue_pending(wayland_egl_display->wl_dpy,
 											wayland_egl_display->wl_tbm_event_queue);
-	if (ret) {
+	if (ret == -1) {
 		TPL_ERR("Failed to wl_display_dispatch_queue_pending ret:%d, err:%d", ret,
 				errno);
 		return;
