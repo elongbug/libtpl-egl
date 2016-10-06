@@ -1357,6 +1357,23 @@ static void __cb_tizen_surface_shm_flusher_flush_callback(void *data,
 	}
 
 	tbm_surface_queue_flush(wayland_egl_surface->tbm_queue);
+
+	/* Only when client call tpl_surface_dequeue_buffer(), client can do
+	 * unreference tbm_surface although there are release events in the event queue,
+	 * After tbm_surface_queue_flush, queue has no tbm_surface, client can do
+	 * unreference attached buffers using the list of attached_buffers.
+	 * Then, client does not need to wait for release_callback to unreference
+	 * attached buffer.
+	 */
+	if (wayland_egl_surface->attached_buffers) {
+		TPL_OBJECT_LOCK(&wayland_egl_surface->base);
+		while (!__tpl_list_is_empty(wayland_egl_surface->attached_buffers)) {
+			tbm_surface_h tbm_surface =
+				__tpl_list_pop_front(wayland_egl_surface->attached_buffers, NULL);
+			tbm_surface_internal_unref(tbm_surface);
+		}
+		TPL_OBJECT_UNLOCK(&wayland_egl_surface->base);
+	}
 }
 
 static const struct tizen_surface_shm_flusher_listener
