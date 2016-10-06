@@ -204,7 +204,8 @@ typedef enum {
 typedef enum {
 	TPL_ERROR_NONE = 0, /* Successfull */
 	TPL_ERROR_INVALID_PARAMETER, /* Invalid parmeter */
-	TPL_ERROR_INVALID_OPERATION /* Invalid operation */
+	TPL_ERROR_INVALID_OPERATION, /* Invalid operation */
+	TPL_ERROR_OUT_OF_MEMORY /* Out of memory */
 } tpl_result_t;
 
 /**

@@ -211,7 +211,7 @@ __tpl_hashlist_insert(tpl_hlist_t *list, size_t key, void *data)
 	new_node = (tpl_hlist_node_t *) malloc(sizeof(tpl_hlist_node_t));
 	if (!new_node) {
 		TPL_ERR("Failed to allocate new tpl_hlist_node_t.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	hash = CALC_HASH(key);

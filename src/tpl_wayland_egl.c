@@ -144,7 +144,7 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 						  sizeof(tpl_wayland_egl_display_t));
 	if (!wayland_egl_display) {
 		TPL_ERR("Failed to allocate memory for new tpl_wayland_egl_display_t.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	display->backend.data = wayland_egl_display;
@@ -483,7 +483,7 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 						  sizeof(tpl_wayland_egl_surface_t));
 	if (!wayland_egl_surface) {
 		TPL_ERR("Failed to allocate memory for new tpl_wayland_egl_surface_t.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	if (__tpl_object_init(&wayland_egl_surface->base, TPL_OBJECT_SURFACE,

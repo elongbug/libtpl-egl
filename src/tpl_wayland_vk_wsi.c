@@ -167,7 +167,7 @@ __tpl_wayland_vk_wsi_display_init(tpl_display_t *display)
 							 sizeof(tpl_wayland_vk_wsi_display_t));
 	if (!wayland_vk_wsi_display) {
 		TPL_ERR("Failed to allocate memory for new tpl_wayland_vk_wsi_display_t.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	wayland_vk_wsi_display->surface_capabilities.min_buffer = 2;
@@ -288,7 +288,7 @@ __tpl_wayland_vk_wsi_surface_init(tpl_surface_t *surface)
 							 sizeof(tpl_wayland_vk_wsi_surface_t));
 	if (!wayland_vk_wsi_surface) {
 		TPL_ERR("Failed to allocate memory for new tpl_wayland_vk_wsi_surface_t.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	surface->backend.data = (void *)wayland_vk_wsi_surface;
@@ -624,6 +624,7 @@ __tpl_wayland_vk_wsi_surface_get_swapchain_buffers(tpl_surface_t *surface,
 	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface = NULL;
 	tbm_surface_queue_error_e tsq_err;
 	int i, dequeue_count;
+	tpl_result_t ret = TPL_ERROR_NONE;
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->backend.data);
@@ -636,7 +637,7 @@ __tpl_wayland_vk_wsi_surface_get_swapchain_buffers(tpl_surface_t *surface,
 							wayland_vk_wsi_surface->buffer_count, sizeof(tbm_surface_h));
 	if (!swapchain_buffers) {
 		TPL_ERR("Failed to allocate memory for buffers.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	for (i = 0 ; i < wayland_vk_wsi_surface->buffer_count ; i++) {
@@ -645,6 +646,7 @@ __tpl_wayland_vk_wsi_surface_get_swapchain_buffers(tpl_surface_t *surface,
 			TPL_ERR("Failed to get tbm_surface from tbm_surface_queue | tsq_err = %d",
 					tsq_err);
 			dequeue_count = i;
+			ret = TPL_ERROR_OUT_OF_MEMORY;
 			goto get_buffer_fail;
 		}
 		swapchain_buffers[i] = buffer;
@@ -655,6 +657,7 @@ __tpl_wayland_vk_wsi_surface_get_swapchain_buffers(tpl_surface_t *surface,
 											swapchain_buffers[i]);
 		if (tsq_err != TBM_SURFACE_QUEUE_ERROR_NONE) {
 			TPL_ERR("Failed to release tbm_surface. | tsq_err = %d", tsq_err);
+			ret = TPL_ERROR_INVALID_OPERATION;
 			goto release_buffer_fail;
 		}
 	}
@@ -675,7 +678,7 @@ get_buffer_fail:
 
 release_buffer_fail:
 	free(swapchain_buffers);
-	return TPL_ERROR_INVALID_OPERATION;
+	return ret;
 }
 
 #if USE_WORKER_THREAD == 1
@@ -716,7 +719,7 @@ __tpl_wayland_vk_wsi_surface_create_swapchain(tpl_surface_t *surface,
 
 	if (!wayland_vk_wsi_surface->tbm_queue) {
 		TPL_ERR("TBM surface queue creation failed!");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	wayland_vk_wsi_surface->buffer_count = buffer_count;

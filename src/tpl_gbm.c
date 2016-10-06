@@ -102,7 +102,7 @@ __tpl_gbm_display_init(tpl_display_t *display)
 	}
 
 	gbm_display = (tpl_gbm_display_t *) calloc(1, sizeof(tpl_gbm_display_t));
-	if (!gbm_display) return TPL_ERROR_INVALID_PARAMETER;
+	if (!gbm_display) return TPL_ERROR_OUT_OF_MEMORY;
 
 	display->bufmgr_fd = dup(gbm_device_get_fd(display->native_handle));
 	gbm_display->bufmgr = tbm_bufmgr_init(display->bufmgr_fd);
@@ -263,7 +263,7 @@ __tpl_gbm_surface_init(tpl_surface_t *surface)
 	tpl_gbm_surface = (tpl_gbm_surface_t *) calloc(1, sizeof(tpl_gbm_surface_t));
 	if (!tpl_gbm_surface) {
 		TPL_ERR("Failed to allocate new gbm backend surface.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	surface->backend.data = (void *)tpl_gbm_surface;

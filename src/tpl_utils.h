@@ -518,7 +518,7 @@ __tpl_list_insert(tpl_list_node_t *pos, void *data)
 	tpl_list_node_t *node = (tpl_list_node_t *)malloc(sizeof(tpl_list_node_t));
 	if (!node) {
 		TPL_ERR("Failed to allocate new tpl_list_node_t.");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	node->data = data;

@@ -18,7 +18,7 @@ __tpl_runtime_init()
 		runtime = (tpl_runtime_t *) calloc(1, sizeof(tpl_runtime_t));
 		if (runtime == NULL) {
 			TPL_ERR("Failed to allocate new tpl_runtime_t.");
-			return TPL_ERROR_INVALID_OPERATION;
+			return TPL_ERROR_OUT_OF_MEMORY;
 		}
 	}
 

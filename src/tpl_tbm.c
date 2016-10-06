@@ -30,14 +30,14 @@ __tpl_tbm_display_init(tpl_display_t *display)
 
 	tbm_display = (tpl_tbm_display_t *) calloc(1, sizeof(tpl_tbm_display_t));
 
+	if (!tbm_display) {
+		TPL_ERR("Failed to allocate memory for new tpl_tbm_display_t.");
+		return TPL_ERROR_OUT_OF_MEMORY;
+	}
+
 	if (!display->native_handle) {
 		display->native_handle = tbm_bufmgr_init(-1);
 		tbm_display->need_dpy_deinit = 1;
-	}
-
-	if (!tbm_display) {
-		TPL_ERR("Failed to allocate memory for new tpl_tbm_display_t.");
-		return TPL_ERROR_INVALID_OPERATION;
 	}
 
 	display->backend.data = tbm_display;
@@ -174,7 +174,7 @@ __tpl_tbm_surface_init(tpl_surface_t *surface)
 	tpl_tbm_surface = (tpl_tbm_surface_t *) calloc(1, sizeof(tpl_tbm_surface_t));
 	if (!tpl_tbm_surface) {
 		TPL_ERR("Failed to allocate memory for new tpl_tbm_surface_t");
-		return TPL_ERROR_INVALID_OPERATION;
+		return TPL_ERROR_OUT_OF_MEMORY;
 	}
 
 	surface->backend.data = (void *)tpl_tbm_surface;
