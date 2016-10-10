@@ -5,6 +5,7 @@
 #include <tbm_surface.h>
 #include <tbm_surface_queue.h>
 #include <tbm_sync.h>
+#include <pthread.h>
 
 typedef struct __tpl_worker_surface tpl_worker_surface_t;
 
@@ -18,6 +19,7 @@ struct __tpl_worker_surface {
 				   unsigned int tv_usec);
 
 	tbm_surface_h draw_wait_buffer;
+	pthread_mutex_t mutex;
 };
 
 tpl_bool_t __tpl_worker_support_vblank();

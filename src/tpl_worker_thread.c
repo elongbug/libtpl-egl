@@ -49,6 +49,10 @@ __tpl_worker_surface_list_insert(tpl_worker_surface_t *surface)
 	}
 
 	surface->draw_wait_buffer = NULL;
+
+	if (pthread_mutex_init(&surface->mutex, NULL) != 0)
+		TPL_ERR_ERRNO("surface mutex init failed");
+
 	__tpl_list_push_back(&tpl_worker_thread.surface_list, surface);
 
 	pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
@@ -64,6 +68,23 @@ __tpl_worker_surface_list_remove(tpl_worker_surface_t *surface)
 
 	__tpl_list_remove_data(&tpl_worker_thread.surface_list, surface,
 						   TPL_FIRST, NULL);
+
+	if (pthread_mutex_lock(&surface->mutex) != 0)
+		TPL_ERR_ERRNO("surface list mutex lock failed");
+
+	if (surface->draw_wait_buffer) {
+		int wait_fd;
+
+		wait_fd = surface->draw_wait_fd_get(surface->surface,
+											surface->draw_wait_buffer);
+		if (wait_fd != -1)
+			epoll_ctl(tpl_worker_thread.epoll_fd, EPOLL_CTL_DEL, wait_fd, NULL);
+		surface->draw_wait_buffer = NULL;
+	}
+	pthread_mutex_unlock(&surface->mutex);
+
+	if (pthread_mutex_destroy(&surface->mutex) != 0)
+		TPL_ERR_ERRNO("surface mutex init failed");
 
 	pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
 }
@@ -134,13 +155,12 @@ __tpl_worker_new_buffer_notify(tpl_worker_surface_t *surface)
 {
 	TPL_ASSERT(surface->surface);
 
-	if (pthread_mutex_lock(&tpl_worker_thread.surface_mutex) != 0) {
+	if (pthread_mutex_lock(&surface->mutex) != 0)
 		TPL_ERR_ERRNO("surface list mutex lock failed");
-		return;
-	}
 
 	__tpl_worker_prepare_draw_wait_buffer(tpl_worker_thread.epoll_fd, surface);
-	pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
+
+	pthread_mutex_unlock(&surface->mutex);
 }
 
 static tpl_bool_t
@@ -164,8 +184,14 @@ __tpl_worker_cb_vblank(tdm_client_vblank *tdm_vblank, tdm_error error,
 		tpl_worker_surface_t *surface;
 
 		surface = __tpl_list_node_get_data(trail);
+
+		if (pthread_mutex_lock(&surface->mutex) != 0)
+			TPL_ERR_ERRNO("surface list mutex lock failed");
+
 		if (surface->vblank)
 			surface->vblank(surface->surface, sequence, tv_sec, tv_usec);
+
+		pthread_mutex_unlock(&surface->mutex);
 	}
 	pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
 
@@ -301,23 +327,6 @@ __tpl_worker_thread_loop(void *arg)
 
 	while(tpl_worker_thread.running) {
 		int i;
-		tpl_list_node_t *trail;
-
-		/* set buffer's sync fd and vblank list */
-		if (pthread_mutex_lock(&tpl_worker_thread.surface_mutex) != 0) {
-			TPL_ERR_ERRNO("surface list mutex lock failed");
-			goto cleanup;
-		}
-
-		for (trail = __tpl_list_get_front_node(&tpl_worker_thread.surface_list);
-			 trail != NULL;
-			 trail = __tpl_list_node_next(trail)) {
-			tpl_worker_surface_t *surface = __tpl_list_node_get_data(trail);
-			TPL_ASSERT(surface);
-
-			__tpl_worker_prepare_draw_wait_buffer(epoll_fd, surface);
-		}
-		pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
 
 		/* wait events */
 		ret = epoll_wait(epoll_fd, ev_list, EPOLL_MAX_SIZE, -1);
@@ -332,6 +341,7 @@ __tpl_worker_thread_loop(void *arg)
 				if (ev_list[i].events & EPOLLIN) {
 					int len;
 					uint64_t read_buf;
+
 					len = read(tpl_worker_thread.event_fd,
 						 &read_buf, sizeof(uint64_t));
 					if (len < 0) {
@@ -349,44 +359,52 @@ __tpl_worker_thread_loop(void *arg)
 			} else {
 				/* draw done */
 				tpl_worker_surface_t *surface = ev_list[i].data.ptr;
-				int wait_fd;
-				int fence_result;
 
 				if (!(ev_list[i].events & EPOLLIN))
 					continue;
 
-				if (!surface->draw_wait_buffer) {
-					TPL_WARN("recieve already signaled event\n");
-					continue;
-				}
+				if (pthread_mutex_lock(&surface->mutex) != 0)
+					TPL_ERR_ERRNO("surface list mutex lock failed");
 
-				wait_fd = surface->draw_wait_fd_get(surface->surface, surface->draw_wait_buffer);
-				if (wait_fd == -1) {
-					if (surface->draw_done)
-						surface->draw_done(surface->surface, surface->draw_wait_buffer,
-										   TPL_ERROR_INVALID_OPERATION);
-					surface->draw_wait_buffer = NULL;
-					continue;
-				}
+				if (surface->draw_wait_buffer) {
+					int wait_fd;
 
-				switch (fence_result = tbm_sync_fence_wait(wait_fd, 0)) {
-					case 0:
-						TPL_ERR_ERRNO("sync_fence_wait return error.");
-					case 1:
-						/* some time recieve event two times */
-						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_fd, NULL);
+					wait_fd = surface->draw_wait_fd_get(surface->surface,
+														surface->draw_wait_buffer);
+					if (wait_fd == -1) {
 						if (surface->draw_done)
 							surface->draw_done(surface->surface, surface->draw_wait_buffer,
-											   fence_result == 1 ?
-											   TPL_ERROR_NONE : TPL_ERROR_INVALID_OPERATION);
+											   TPL_ERROR_INVALID_OPERATION);
 						surface->draw_wait_buffer = NULL;
-						break;
-					case -1:
-						TPL_WARN("sync_fence_wait return timeout.");
-						break;
+					} else {
+						int fence_result;
+
+						switch (fence_result = tbm_sync_fence_wait(wait_fd, 0)) {
+							case 0:
+								TPL_ERR_ERRNO("sync_fence_wait return error.");
+							case 1:
+								/* some time recieve event two times */
+								epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_fd, NULL);
+								if (surface->draw_done)
+									surface->draw_done(surface->surface,
+													   surface->draw_wait_buffer,
+													   fence_result == 1 ?
+													   TPL_ERROR_NONE :
+													   TPL_ERROR_INVALID_OPERATION);
+								surface->draw_wait_buffer = NULL;
+								break;
+							case -1:
+								TPL_WARN("sync_fence_wait return timeout.");
+								break;
+						}
+					}
+				} else {
+					TPL_WARN("recieve already signaled event\n");
 				}
 
-				/* prepare next buffer in loop start time */
+				if (surface->draw_wait_buffer == NULL)
+					__tpl_worker_prepare_draw_wait_buffer(epoll_fd, surface);
+				pthread_mutex_unlock(&surface->mutex);
 			}
 		}
 	}
