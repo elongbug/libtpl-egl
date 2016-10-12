@@ -55,25 +55,50 @@ extern unsigned int tpl_log_lvl;
 extern unsigned int tpl_log_initialized;
 extern unsigned int tpl_dump_lvl;
 
+#define FONT_DEFAULT	"\033[0m"	/* for reset to default color */
+#define FONT_RED		"\033[31m"	/* for error logs */
+#define FONT_YELLOW		"\033[33m"	/* for warning logs */
+#define FONT_GREEN		"\033[32m"	/* for frontend API logs */
+#define FONT_BLUE		"\033[34m"	/* for backend logs */
+#define FONT_MAGENTA	"\033[35m"	/* for debug logs */
+
 #ifdef DLOG_DEFAULT_ENABLE
 #define LOG_TAG "TPL"
 #include <dlog.h>
-#define TPL_LOG_F(f, x...)		LOGD(f, ##x)
-#define TPL_LOG_B(b, f, x...)	LOGD(f, ##x)
-#define TPL_DEBUG(f, x...)		LOGD(f, ##x)
-#define TPL_ERR(f, x...)		LOGE(f, ##x)
-#define TPL_WARN(f, x...)		LOGW(f, ##x)
+#endif
+
+#ifdef DLOG_DEFAULT_ENABLE
+#define tpl_log_f(t, f, x...)	LOGD(FONT_GREEN t FONT_DEFAULT " " f, ##x)
+#define tpl_log_b(t, f, x...)	LOGD(FONT_BLUE t FONT_DEFAULT " " f, ##x)
+#define tpl_log_d(t, f, x...)	LOGD(FONT_MAGENTA t FONT_DEFAULT " " f, ##x)
+#define tpl_log_e(t, f, x...)	LOGE(FONT_RED t " " f FONT_DEFAULT, ##x)
+#define tpl_log_w(t, f, x...)	LOGW(FONT_YELLOW t " " f FONT_DEFAULT, ##x)
 #else /* DLOG_DEFAULT_ENABLE */
+#define tpl_log_f(t, f, x...)											\
+	fprintf(stderr, FONT_GREEN t FONT_DEFAULT "[(pid:%d)(%s)] " f "\n",	\
+			getpid(), __func__, ##x)
+#define tpl_log_b(t, f, x...)											\
+	fprintf(stderr, FONT_BLUE t FONT_DEFAULT "[(pid:%d)(%s)] " f "\n",	\
+			getpid(), __func__, ##x)
+#define tpl_log_d(t, f, x...)											\
+	fprintf(stderr, FONT_MAGENTA t FONT_DEFAULT "[(pid:%d)(%s)] " f "\n",\
+			getpid(), __func__, ##x)
+#define tpl_log_e(t, f, x...)											\
+	fprintf(stderr, FONT_RED t "[(pid:%d)(%s)] " f FONT_DEFAULT "\n",	\
+			getpid(), __func__, ##x)
+#define tpl_log_w(t, f, x...)											\
+	fprintf(stderr, FONT_YELLOW t "[(pid:%d)(%s)] " f FONT_DEFAULT "\n",\
+			getpid(), __func__, ##x)
+#endif /* DLOG_DEFAULT_ENABLE */
+
+
+#define TPL_ERR(f, x...)		tpl_log_e("[TPL_ERROR]", f, ##x)
+#define TPL_WARN(f, x...)		tpl_log_w("[TPL_WARNING]", f, ##x)
+
 #ifdef LOG_DEFAULT_ENABLE
-#define TPL_LOG_F(f, x...)								\
-	fprintf(stderr, "[TPL_F(%d):%s(%d)] " f "\n",		\
-			getpid(), __func__, __LINE__, ##x)
-#define TPL_LOG_B(b, f, x...)							\
-	fprintf(stderr,	"[TPL_" b "(%d):%s(%d)] " f "\n",	\
-			getpid(), __FILE__, __LINE__, ##x)
-#define TPL_DEBUG(f, x...)								\
-	fprintf(stderr,	"[TPL_D(%d):%s(%d)] " f "\n",		\
-			getpid(), __func__, __LINE__, ##x)
+#define TPL_LOG_F(f, x...)		tpl_log_f("[TPL_F]", f, ##x)
+#define TPL_LOG_B(b, f, x...)	tpl_log_b("[TPL_" b "]", f, ##x)
+#define TPL_DEBUG(f, x...)		tpl_log_d("[TPL_DEBUG]", f, ##x)
 #else /* LOG_DEFAULT_ENABLE */
 /*
  * TPL_LOG_LEVEL
@@ -102,45 +127,31 @@ extern unsigned int tpl_dump_lvl;
 	{													\
 		LOG_INIT();										\
 		if (tpl_log_lvl > 0 && tpl_log_lvl < 4)			\
-			fprintf(stderr, "[TPL_F(%d):%s(%d)] " f "\n",\
-					getpid(), __func__, __LINE__, ##x);	\
+			tpl_log_f("[TPL_F]", f, ##x);				\
 	}
 
-#define TPL_LOG_B(b, f, x...)								\
-	{														\
-		LOG_INIT();											\
-		if (tpl_log_lvl > 1 && tpl_log_lvl < 4)				\
-			fprintf(stderr,	"[TPL_" b "(%d):%s(%d)] " f "\n",\
-					getpid(), __FILE__, __LINE__, ##x);		\
+#define TPL_LOG_B(b, f, x...)							\
+	{													\
+		LOG_INIT();										\
+		if (tpl_log_lvl > 1 && tpl_log_lvl < 4)			\
+			tpl_log_b("[TPL_" b "]", f, ##x);			\
 	}
 
 #define TPL_DEBUG(f, x...)								\
 	{													\
 		LOG_INIT();										\
 		if (tpl_log_lvl > 2)							\
-			fprintf(stderr,	"[TPL_D(%d):%s(%d)] " f "\n",\
-					getpid(), __func__, __LINE__, ##x);	\
+			tpl_log_d("[TPL_DEBUG]", f, ##x);			\
 	}
-
 #endif /* LOG_DEFAULT_ENABLE */
-
-#define TPL_ERR(f, x...)								\
-	fprintf(stderr,										\
-			"[TPL_ERR(%d):%s(%d)] " f "\n",				\
-			getpid(), __func__, __LINE__, ##x)
-
-#define TPL_WARN(f, x...)								\
-	fprintf(stderr,										\
-			"[TPL_WARN(%d):%s(%d)] " f "\n",			\
-			getpid(), __func__, __LINE__, ##x)
-#endif /* DLOG_DEFAULT_ENABLE */
 #else /* NDEBUG */
 #define TPL_LOG_F(f, x...)
 #define TPL_LOG_B(b, f, x...)
 #define TPL_DEBUG(f, x...)
 #define TPL_ERR(f, x...)
 #define TPL_WARN(f, x...)
-#endif /* NDEBUG */
+#endif
+
 
 #define TPL_CHECK_ON_NULL_RETURN(exp)							\
 	{															\
