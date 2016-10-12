@@ -322,7 +322,7 @@ tpl_surface_get_swapchain_buffers(tpl_surface_t *surface,
 
 tpl_result_t
 tpl_surface_create_swapchain(tpl_surface_t *surface, tbm_format format,
-							 int width, int height, int buffer_count)
+							 int width, int height, int buffer_count, int present_mode)
 {
 	tpl_result_t ret = TPL_ERROR_INVALID_OPERATION;
 
@@ -347,7 +347,7 @@ tpl_surface_create_swapchain(tpl_surface_t *surface, tbm_format format,
 	TPL_OBJECT_LOCK(surface);
 
 	ret = surface->backend.create_swapchain(surface, format, width, height,
-											buffer_count);
+											buffer_count, present_mode);
 
 	TPL_OBJECT_UNLOCK(surface);
 

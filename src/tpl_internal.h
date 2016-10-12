@@ -74,6 +74,9 @@ struct _tpl_display_backend {
 	tpl_result_t (*query_window_supported_buffer_count)(tpl_display_t *display,
 			tpl_handle_t window,
 			int *min, int *max);
+	tpl_result_t (*query_window_supported_present_modes)(tpl_display_t *display,
+														tpl_handle_t window,
+														int *modes);
 };
 
 struct _tpl_surface_backend {
@@ -94,7 +97,7 @@ struct _tpl_surface_backend {
 										  int *buffer_count);
 	tpl_result_t (*create_swapchain)(tpl_surface_t *surface,
 									 tbm_format format, int width,
-									 int height, int buffer_count);
+									 int height, int buffer_count, int present_mode);
 	tpl_result_t (*destroy_swapchain)(tpl_surface_t *surface);
 };
 
