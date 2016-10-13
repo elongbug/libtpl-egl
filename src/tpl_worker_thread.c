@@ -322,8 +322,10 @@ __tpl_worker_thread_loop(void *arg)
 		goto cleanup;
 
 	/* vblank fd */
-	if (__tpl_worker_prepare_vblank(epoll_fd, &tdm_client, &tdm_vblank))
-		tpl_worker_thread.support_vblank = TPL_TRUE;
+	/* FIXME: vblank has performance problem */
+	/*if (__tpl_worker_prepare_vblank(epoll_fd, &tdm_client, &tdm_vblank))
+		tpl_worker_thread.support_vblank = TPL_TRUE;*/
+	tpl_worker_thread.support_vblank = TPL_TRUE;
 
 	while(tpl_worker_thread.running) {
 		int i;

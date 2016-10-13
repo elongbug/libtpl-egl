@@ -830,6 +830,9 @@ __tpl_wayland_vk_wsi_surface_create_swapchain(tpl_surface_t *surface,
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
+	/* FIXME: vblank has performance problem so replace all present mode to MAILBOX */
+	present_mode = TPL_DISPLAY_PRESENT_MODE_MAILBOX;
+
 	/* TODO: check server supported present modes */
 	switch (present_mode) {
 #if USE_WORKER_THREAD == 1
