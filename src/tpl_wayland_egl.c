@@ -207,25 +207,23 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 	return TPL_ERROR_NONE;
 
 free_wl_display:
-	if (wayland_egl_display) {
-		if ((wayland_egl_display->wl_tbm) && (wayland_egl_display->wl_tbm_event_queue))
-			wl_proxy_set_queue(wayland_egl_display->wl_tbm, NULL);
-		if (wayland_egl_display->wl_tbm_client)
-			wayland_tbm_client_deinit(wayland_egl_display->wl_tbm_client);
-		if (wayland_egl_display->tdm_client)
-			tdm_client_destroy(wayland_egl_display->tdm_client);
-		if (wayland_egl_display->wl_tbm_event_queue)
-			wl_event_queue_destroy(wayland_egl_display->wl_tbm_event_queue);
+	if (wayland_egl_display->tdm_client)
+		tdm_client_destroy(wayland_egl_display->tdm_client);
+	if ((wayland_egl_display->wl_tbm) && (wayland_egl_display->wl_tbm_event_queue))
+		wl_proxy_set_queue(wayland_egl_display->wl_tbm, NULL);
+	if (wayland_egl_display->wl_tbm_event_queue)
+		wl_event_queue_destroy(wayland_egl_display->wl_tbm_event_queue);
+	if (wayland_egl_display->wl_tbm_client)
+		wayland_tbm_client_deinit(wayland_egl_display->wl_tbm_client);
 
-		wayland_egl_display->wl_tbm_event_queue = NULL;
-		wayland_egl_display->wl_tbm_client = NULL;
-		wayland_egl_display->tdm_client = NULL;
-		wayland_egl_display->wl_tbm = NULL;
-		wayland_egl_display->wl_dpy = NULL;
+	wayland_egl_display->wl_tbm_event_queue = NULL;
+	wayland_egl_display->wl_tbm_client = NULL;
+	wayland_egl_display->tdm_client = NULL;
+	wayland_egl_display->wl_tbm = NULL;
+	wayland_egl_display->wl_dpy = NULL;
 
-		free(wayland_egl_display);
-		display->backend.data = NULL;
-	}
+	free(wayland_egl_display);
+	display->backend.data = NULL;
 	return TPL_ERROR_INVALID_OPERATION;
 }
 
