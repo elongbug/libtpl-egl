@@ -391,6 +391,7 @@ tpl_surface_set_frontbuffer_mode(tpl_surface_t *surface, tpl_bool_t set)
 	TPL_OBJECT_LOCK(surface);
 
 	if (surface->is_frontbuffer_mode == set) {
+		TPL_OBJECT_UNLOCK(surface);
 		return ret;
 	} else {
 		surface->is_frontbuffer_mode = set;
