@@ -257,15 +257,13 @@ tpl_surface_enqueue_buffer_with_damage_and_sync(tpl_surface_t *surface,
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
-	TRACE_BEGIN("TPL:ENQUEUE_BUFFER_WITH_DAMAGE");
-	TPL_OBJECT_LOCK(surface);
-
 	if (!tbm_surface) {
-		TPL_OBJECT_UNLOCK(surface);
-		TRACE_END();
 		TPL_ERR("tbm surface is invalid.");
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
+
+	TRACE_BEGIN("TPL:ENQUEUE_BUFFER_WITH_DAMAGE");
+	TPL_OBJECT_LOCK(surface);
 
 	if (surface->is_frontbuffer_mode) {
 		if (surface->frontbuffer == tbm_surface) {
