@@ -307,6 +307,7 @@ __tpl_gbm_surface_init(tpl_surface_t *surface)
 
 error:
 	free(tpl_gbm_surface);
+	surface->backend.data = NULL;
 
 	return TPL_ERROR_INVALID_OPERATION;
 }
