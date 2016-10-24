@@ -35,7 +35,7 @@ typedef struct _tpl_wayland_egl_buffer tpl_wayland_egl_buffer_t;
 struct _tpl_wayland_egl_display {
 	tbm_bufmgr bufmgr;
 	struct wayland_tbm_client *wl_tbm_client;
-	struct wl_proxy *wl_tbm;	/* wayland_tbm_client proxy */
+	struct wl_proxy *wl_tbm; /* wayland_tbm_client proxy */
 	tdm_client *tdm_client;
 	struct wl_display *wl_dpy;
 	struct wl_event_queue *wl_tbm_event_queue;
@@ -47,7 +47,7 @@ struct _tpl_wayland_egl_surface {
 	tbm_surface_queue_h tbm_queue;
 	tbm_surface_h current_buffer;
 	tpl_bool_t resized;
-	tpl_bool_t reset;	/* TRUE if queue reseted by external  */
+	tpl_bool_t reset; /* TRUE if queue reseted by external  */
 	tdm_client_vblank *tdm_vblank; /* vblank object for each wl_surface */
 	tpl_bool_t vblank_done;
 	tpl_list_t *attached_buffers; /* list for tracking [ACQ]~[REL] buffers */
@@ -71,9 +71,11 @@ static int tpl_wayland_egl_buffer_key;
 #define KEY_tpl_wayland_egl_buffer  (unsigned long)(&tpl_wayland_egl_buffer_key)
 
 static void
-__tpl_wayland_egl_display_buffer_flusher_init(tpl_display_t *display);
+__tpl_wayland_egl_display_buffer_flusher_init(
+	tpl_wayland_egl_display_t *wayland_egl_display);
 static void
-__tpl_wayland_egl_display_buffer_flusher_fini(tpl_display_t *display);
+__tpl_wayland_egl_display_buffer_flusher_fini(
+	tpl_wayland_egl_display_t *wayland_egl_display);
 static void
 __tpl_wayland_egl_surface_buffer_flusher_init(tpl_surface_t *surface);
 static void
@@ -194,7 +196,7 @@ __tpl_wayland_egl_display_init(tpl_display_t *display)
 		}
 
 		wayland_egl_display->wl_dpy = wl_dpy;
-		__tpl_wayland_egl_display_buffer_flusher_init(display);
+		__tpl_wayland_egl_display_buffer_flusher_init(wayland_egl_display);
 
 	} else {
 		TPL_ERR("Invalid native handle for display.");
@@ -239,7 +241,7 @@ __tpl_wayland_egl_display_fini(tpl_display_t *display)
 		TPL_LOG_B("WL_EGL", "[FINI] tpl_wayland_egl_display_t(%p) wl_tbm_client(%p)",
 				  wayland_egl_display, wayland_egl_display->wl_tbm_client);
 
-		__tpl_wayland_egl_display_buffer_flusher_fini(display);
+		__tpl_wayland_egl_display_buffer_flusher_fini(wayland_egl_display);
 
 		if (wayland_egl_display->tdm_client)
 			tdm_client_destroy(wayland_egl_display->tdm_client);
@@ -935,8 +937,7 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 }
 
 static tbm_surface_h
-__tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface,
-										 uint64_t timeout_ns,
+__tpl_wayland_egl_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 										 tbm_fd *sync_fence)
 {
 	TPL_ASSERT(surface);
@@ -1257,7 +1258,8 @@ __cb_resistry_global_callback(void *data, struct wl_registry *wl_registry,
 }
 
 void
-__cb_resistry_global_remove_callback(void *data, struct wl_registry *wl_registry,
+__cb_resistry_global_remove_callback(void *data,
+									 struct wl_registry *wl_registry,
 									 uint32_t name)
 {
 }
@@ -1268,9 +1270,9 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 static void
-__tpl_wayland_egl_display_buffer_flusher_init(tpl_display_t *display)
+__tpl_wayland_egl_display_buffer_flusher_init(
+	tpl_wayland_egl_display_t *wayland_egl_display)
 {
-	tpl_wayland_egl_display_t *wayland_egl_display = display->backend.data;
 	struct wl_registry *registry = NULL;
 	struct wl_event_queue *queue = NULL;
 	int ret;
@@ -1313,10 +1315,9 @@ fini:
 }
 
 static void
-__tpl_wayland_egl_display_buffer_flusher_fini(tpl_display_t *display)
+__tpl_wayland_egl_display_buffer_flusher_fini(
+	tpl_wayland_egl_display_t *wayland_egl_display)
 {
-	tpl_wayland_egl_display_t *wayland_egl_display = display->backend.data;
-
 	if (wayland_egl_display->tizen_surface_shm) {
 		tizen_surface_shm_destroy(wayland_egl_display->tizen_surface_shm);
 		wayland_egl_display->tizen_surface_shm = NULL;
@@ -1375,8 +1376,8 @@ static void __cb_tizen_surface_shm_flusher_flush_callback(void *data,
 }
 
 static const struct tizen_surface_shm_flusher_listener
-	tizen_surface_shm_flusher_listener = {
-		__cb_tizen_surface_shm_flusher_flush_callback
+tizen_surface_shm_flusher_listener = {
+	__cb_tizen_surface_shm_flusher_flush_callback
 };
 
 static void
