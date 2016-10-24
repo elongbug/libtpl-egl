@@ -241,19 +241,19 @@ __tpl_wayland_egl_display_fini(tpl_display_t *display)
 		TPL_LOG_B("WL_EGL", "[FINI] tpl_wayland_egl_display_t(%p) wl_tbm_client(%p)",
 				  wayland_egl_display, wayland_egl_display->wl_tbm_client);
 
-		if ((wayland_egl_display->wl_tbm) && (wayland_egl_display->wl_tbm_event_queue))
-			wl_proxy_set_queue(wayland_egl_display->wl_tbm, NULL);
-
-		if (wayland_egl_display->wl_tbm_client)
-			wayland_tbm_client_deinit(wayland_egl_display->wl_tbm_client);
+		__tpl_wayland_egl_display_buffer_flusher_fini(display);
 
 		if (wayland_egl_display->tdm_client)
 			tdm_client_destroy(wayland_egl_display->tdm_client);
 
+		if ((wayland_egl_display->wl_tbm) && (wayland_egl_display->wl_tbm_event_queue))
+			wl_proxy_set_queue(wayland_egl_display->wl_tbm, NULL);
+
 		if (wayland_egl_display->wl_tbm_event_queue)
 			wl_event_queue_destroy(wayland_egl_display->wl_tbm_event_queue);
 
-		__tpl_wayland_egl_display_buffer_flusher_fini(display);
+		if (wayland_egl_display->wl_tbm_client)
+			wayland_tbm_client_deinit(wayland_egl_display->wl_tbm_client);
 
 		wayland_egl_display->wl_tbm_event_queue = NULL;
 		wayland_egl_display->wl_tbm_client = NULL;
