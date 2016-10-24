@@ -378,19 +378,19 @@ __cb_client_window_resize_callback(struct wl_egl_window *wl_egl_window,
 static TPL_INLINE void
 __tpl_wayland_egl_buffer_set_reset_flag(tpl_list_t *tracking_list)
 {
-	tpl_wayland_egl_buffer_t *wayland_egl_buffer = NULL;
-	tbm_surface_h tbm_surface = NULL;
 	tpl_list_node_t *node = __tpl_list_get_front_node(tracking_list);
 
 	while (node) {
-		tbm_surface = (tbm_surface_h) __tpl_list_node_get_data(node);
+		tbm_surface_h tbm_surface =
+				(tbm_surface_h)__tpl_list_node_get_data(node);
 
-		if (tbm_surface)
-			wayland_egl_buffer =
+		if (tbm_surface) {
+			tpl_wayland_egl_buffer_t *wayland_egl_buffer =
 				__tpl_wayland_egl_get_wayland_buffer_from_tbm_surface(tbm_surface);
 
-		if (wayland_egl_buffer)
-			wayland_egl_buffer->reset = TPL_TRUE;
+			if (wayland_egl_buffer)
+				wayland_egl_buffer->reset = TPL_TRUE;
+		}
 
 		node = __tpl_list_node_next(node);
 	}
