@@ -417,8 +417,12 @@ tpl_surface_set_reset_cb(tpl_surface_t *surface, void *data, tpl_surface_cb_func
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
+	TPL_OBJECT_LOCK(surface);
+
 	surface->reset_data = data;
 	surface->reset_cb = reset_cb;
+
+	TPL_OBJECT_UNLOCK(surface);
 
 	return ret;
 }
