@@ -567,8 +567,6 @@ __tpl_list_remove_data(tpl_list_t *list, void *data, int occurrence,
 			TPL_ASSERT(node);
 
 			if (curr->data == data) {
-				if (func) func(data);
-
 				__tpl_list_remove(curr, func);
 				return;
 			}
@@ -586,8 +584,6 @@ __tpl_list_remove_data(tpl_list_t *list, void *data, int occurrence,
 			TPL_ASSERT(node);
 
 			if (curr->data == data) {
-				if (func) func(data);
-
 				__tpl_list_remove(curr, func);
 				return;
 			}
@@ -604,11 +600,8 @@ __tpl_list_remove_data(tpl_list_t *list, void *data, int occurrence,
 			TPL_ASSERT(curr);
 			TPL_ASSERT(node);
 
-			if (curr->data == data) {
-				if (func) func(data);
-
+			if (curr->data == data)
 				__tpl_list_remove(curr, func);
-			}
 		}
 	}
 }
