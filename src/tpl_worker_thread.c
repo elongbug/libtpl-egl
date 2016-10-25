@@ -318,10 +318,12 @@ __tpl_worker_thread_loop(void *arg)
 		pthread_mutex_unlock(&tpl_worker_thread.surface_mutex);
 
 		/* wait events */
+cont_epoll_wait:
 		ret = epoll_wait(epoll_fd, ev_list, EPOLL_MAX_SIZE, -1);
 		if (ret == -1) {
-			TPL_ERR_ERRNO("epoll fd: %d.", epoll_fd);
-			continue;
+			if (errno != EINTR)
+				TPL_ERR_ERRNO("epoll fd: %d.", epoll_fd);
+			goto cont_epoll_wait;
 		}
 
 		for (i = 0; i < ret; i++) {
