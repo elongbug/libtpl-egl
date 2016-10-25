@@ -466,16 +466,18 @@ __tpl_wayland_egl_surface_create_vblank(tpl_wayland_egl_surface_t
 static tpl_result_t
 __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 {
-	tpl_wayland_egl_display_t *wayland_egl_display =
-		(tpl_wayland_egl_display_t *) surface->display->backend.data;
-	tpl_wayland_egl_surface_t *wayland_egl_surface = NULL;
-
-	struct wl_egl_window *wl_egl_window = (struct wl_egl_window *)
-										  surface->native_handle;
+	tpl_wayland_egl_display_t *wayland_egl_display;
+	tpl_wayland_egl_surface_t *wayland_egl_surface;
+	struct wl_egl_window *wl_egl_window;
 
 	TPL_ASSERT(surface);
+	TPL_ASSERT(surface->display);
 	TPL_ASSERT(surface->type == TPL_SURFACE_TYPE_WINDOW);
 	TPL_ASSERT(surface->native_handle);
+
+	wayland_egl_display =
+		(tpl_wayland_egl_display_t *)surface->display->backend.data;
+	wl_egl_window = (struct wl_egl_window *)surface->native_handle;
 
 	wayland_egl_surface = (tpl_wayland_egl_surface_t *) calloc(1,
 						  sizeof(tpl_wayland_egl_surface_t));
@@ -517,7 +519,7 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 											 wl_egl_window->height,
 											 TBM_FORMAT_ARGB8888);
 	} else
-		/*Why wl_surafce is NULL ?*/
+		/*Why wl_surface is NULL ?*/
 		wayland_egl_surface->tbm_queue = tbm_surface_queue_sequence_create(
 											 CLIENT_QUEUE_SIZE,
 											 wl_egl_window->width,
@@ -528,6 +530,7 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 	if (!wayland_egl_surface->tbm_queue) {
 		TPL_ERR("TBM surface queue creation failed!");
 		free(wayland_egl_surface);
+		surface->backend.data = NULL;
 		return TPL_ERROR_INVALID_OPERATION;
 	}
 
@@ -535,7 +538,6 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 	tbm_surface_queue_add_reset_cb(wayland_egl_surface->tbm_queue,
 								   __cb_tbm_surface_queue_reset_callback,
 								   (void *)surface);
-
 
 	surface->width = wl_egl_window->width;
 	surface->height = wl_egl_window->height;
@@ -546,13 +548,12 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 	/* tdm_vblank object decide to be maintained every tpl_wayland_egl_surface
 	   for the case where the several surfaces is created in one display connection. */
 	if (wayland_egl_display->tdm_client) {
-		tpl_result_t tpl_ret = TPL_ERROR_NONE;
-		tpl_ret =
-			__tpl_wayland_egl_surface_create_vblank(wayland_egl_surface,
-					wayland_egl_display->tdm_client);
-		if (tpl_ret != TPL_ERROR_NONE) {
+		if (TPL_ERROR_NONE != __tpl_wayland_egl_surface_create_vblank(
+						wayland_egl_surface,
+						wayland_egl_display->tdm_client)) {
 			tbm_surface_queue_destroy(wayland_egl_surface->tbm_queue);
 			free(wayland_egl_surface);
+			surface->backend.data = NULL;
 			return TPL_ERROR_INVALID_OPERATION;
 		}
 	}
