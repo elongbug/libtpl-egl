@@ -19,7 +19,6 @@ struct __tpl_worker_surface {
 				   unsigned int tv_usec);
 
 	tbm_surface_h draw_wait_buffer;
-	pthread_mutex_t mutex;
 };
 
 tpl_bool_t __tpl_worker_support_vblank();
