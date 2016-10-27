@@ -409,8 +409,6 @@ __cb_tbm_surface_queue_reset_callback(tbm_surface_queue_h surface_queue,
 	wayland_egl_surface = (tpl_wayland_egl_surface_t *)surface->backend.data;
 	TPL_CHECK_ON_NULL_RETURN(wayland_egl_surface);
 
-	if (!wayland_egl_surface) return;
-
 	TPL_LOG_B("WL_EGL",
 			  "[QUEUE_RESET_CB] tpl_wayland_egl_surface_t(%p) surface_queue(%p)",
 			  data, surface_queue);
