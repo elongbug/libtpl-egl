@@ -1,12 +1,15 @@
-##### Build Instruction #####
+libtpl-egl
+==========
 
+GBS Build Instruction
+---------------------
 
-Build libtpl-egl:
-    gbs build -A armv7l --spec=libtpl-egl.spec
+- Build libtpl-egl:
+  $ gbs build -A armv7l --spec=libtpl-egl.spec
 
-Build tpl-test:
-    gbs build -A armv7l --spec=tpl-test.spec
+- Build tpl-test:
+  $ gbs build -A armv7l --spec=tpl-test.spec
 
-Build all:
-    gbs build -A armv7l
+- Build all:
+  $ gbs build -A armv7l
 

@@ -1,6 +1,6 @@
 Name: tpl-test
-Version: 0.2.1
-Release: 1
+Version: 0.3.0
+Release: 0
 Summary: TPL Test Module
 
 Group: Graphics & UI Framework/GL
@@ -35,8 +35,8 @@ export GTEST_INCLUDE="-I${GTEST_DIR}/googletest -I${GTEST_DIR}/googletest/includ
 					  -I${GTEST_DIR}/googlemock -I${GTEST_DIR}/googlemock/include"
 export GTEST_FLAGS="-g -Wall -Wextra -pthread"
 
-export GTEST_LIB_TEST="${GTEST_DIR}/build/gtest/libgtest.a"	# googletest output path
-export GTEST_LIB_MOCK="${GTEST_DIR}/build/libgmock.a"	# googlemock output path
+export GTEST_LIB_PATH="${GTEST_DIR}/build/gtest/libgtest.a"	# googletest output path
+export GMOCK_LIB_PATH="${GTEST_DIR}/build/libgmock.a"	# googlemock output path
 
 export BIN_NAME="tpl-test"
 

@@ -4,8 +4,8 @@
 
 # Following variables will be exported from spec file
 #
-# GTEST_LIB_TEST
-# GTEST_LIB_MOCK
+# GTEST_LIB_PATH
+# GMOCK_LIB_PATH
 # GTEST_INCLUDE
 # GTEST_FLAGS
 # BIN_NAME
@@ -36,6 +36,6 @@ clean :
 %.o: %.cpp
 	$(CXX) -c -o $@ $< $(GTEST_INCLUDE) $(GTEST_FLAGS) $(CPPFLAGS) $(LD_FLAGS)
 
-$(BIN_NAME) : $(OBJS) $(GTEST_LIB_TEST) $(GTEST_LIB_MOCK)
+$(BIN_NAME) : $(OBJS) $(GTEST_LIB_PATH) $(GMOCK_LIB_PATH)
 	$(CXX) -lpthread $^ -o $@ $(GTEST_FLAGS) $(CPPFLAGS) $(LD_FLAGS)
 
