@@ -1349,6 +1349,9 @@ static void __cb_tizen_surface_shm_flusher_flush_callback(void *data,
 	TPL_CHECK_ON_NULL_RETURN(wayland_egl_display->wl_tbm_event_queue);
 	TPL_CHECK_ON_NULL_RETURN(wayland_egl_surface->tbm_queue);
 
+	TPL_LOG_B("WL_EGL", "[FLUSH_CB] tpl_wayland_egl_surface_t(%p)",
+			  wayland_egl_surface);
+
 	/*Fist distach panding queue for TPL
 		- dispatch buffer-release
 		- dispatch queue flush
