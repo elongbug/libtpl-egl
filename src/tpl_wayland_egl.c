@@ -724,9 +724,16 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 						  wl_egl_window->width, wl_egl_window->height);
 	} else {
 		int i;
+
 		for (i = 0; i < num_rects; i++) {
+			/* The rectangles are specified relative to the bottom-left of the
+			 * GL surface. So, these rectanglesd has to be converted to
+			 * WINDOW(Top-left) coord like below.
+			 * y = [WINDOW.HEIGHT] - (RECT.Y + RECT.HEIGHT) */
+			int inverted_y =
+				wl_egl_window->height - (rects[i * 4 + 1] + rects[i * 4 + 3]);
 			wl_surface_damage(wl_egl_window->surface,
-							  rects[i * 4 + 0], rects[i * 4 + 1],
+							  rects[i * 4 + 0], inverted_y,
 							  rects[i * 4 + 2], rects[i * 4 + 3]);
 		}
 	}
