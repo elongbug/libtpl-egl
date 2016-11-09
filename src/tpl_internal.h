@@ -128,8 +128,10 @@ struct _tpl_surface {
 	tpl_surface_type_t type;
 	tbm_format format;
 	int width, height;
+	int rotation;
 	int post_interval;
 	int dump_count;
+	tpl_bool_t rotation_capability;
 	tpl_surface_backend_t backend;
 
 	/*For frontbuffer extension*/

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 
 #include <wayland-client.h>
-#include "wayland-egl.h"
 #include "wayland-egl-priv.h"
 
 #define WL_EGL_DEBUG 1
@@ -98,6 +97,7 @@ wl_egl_window_create(struct wl_surface *surface,
 	wl_egl_window_resize(egl_window, width, height, 0, 0);
 	egl_window->attached_width  = 0;
 	egl_window->attached_height = 0;
+	egl_window->rotation = ROTATION_0;
 
 	WL_EGL_LOG(2, "surf:%10p WxH:%dx%d egl_win:%10p priv:%10p",
 			   surface, width, height, egl_window, egl_window->private);
@@ -130,4 +130,67 @@ wl_egl_window_get_attached_size(struct wl_egl_window *egl_window,
 	WL_EGL_LOG(2, "egl_win:%10p w:%10p h:%10p att_w:%d att_h:%d",
 			   egl_window, width, height, egl_window->attached_width,
 			   egl_window->attached_height);
+}
+
+WL_EGL_EXPORT void
+wl_egl_window_set_rotation(struct wl_egl_window *egl_window,
+						   wl_egl_window_rotation rotation)
+{
+	int resize = 0;
+
+	if (egl_window == NULL) {
+		WL_EGL_ERR("egl_window is NULL");
+		return;
+	}
+
+	if (egl_window->rotation == rotation) {
+		WL_EGL_ERR("rotation value is same");
+		return;
+	}
+
+	switch (rotation) {
+		case ROTATION_0:
+		case ROTATION_180:
+			if (egl_window->rotation == ROTATION_90 || egl_window->rotation == ROTATION_270)
+				resize = 1;
+			break;
+		case ROTATION_90:
+		case ROTATION_270:
+			if (egl_window->rotation == ROTATION_0 || egl_window->rotation == ROTATION_180)
+				resize = 1;
+			break;
+		default:
+			WL_EGL_ERR("Invalid rotation value");
+			return;
+	}
+
+	WL_EGL_LOG(2, "egl_win:%10p prev_rotation:%d curr_rotation: %d",
+			   egl_window, egl_window->rotation, rotation);
+
+	egl_window->rotation = rotation;
+
+	if (egl_window->rotate_callback)
+		egl_window->rotate_callback(egl_window, egl_window->private);
+
+	if (resize) {
+		wl_egl_window_resize(egl_window, egl_window->height, egl_window->width,
+							 egl_window->dx, egl_window->dy);
+	}
+}
+
+WL_EGL_EXPORT int
+wl_egl_window_get_capabilities(struct wl_egl_window *egl_window)
+{
+	int capabilities = WL_EGL_WINDOW_CAPABILITY_NONE;
+	if (egl_window == NULL) {
+		WL_EGL_ERR("egl_window is NULL");
+		return capabilities;
+	}
+
+	if (egl_window->get_rotation_capability)
+		capabilities = egl_window->get_rotation_capability(egl_window, egl_window->private);
+	else
+		capabilities = WL_EGL_WINDOW_CAPABILITY_ROTATION_UNKNOWN;
+
+	return capabilities;
 }

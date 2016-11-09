@@ -426,6 +426,17 @@ tpl_result_t
 tpl_surface_get_size(tpl_surface_t *surface, int *width, int *height);
 
 /**
+ * Get the current rotation-angle of the given TPL surface.
+ *
+ * tpl_surface's angle can be in 0, 90, 180, 270.
+ *
+ * @param surface surface to get rotation-angle.
+ * @param rotation pointer to receive rotation-angle value.
+ */
+tpl_result_t
+tpl_surface_get_rotation(tpl_surface_t *surface, int *rotation);
+
+/**
  * Validate current frame of the given TPL surface.
  *
  * Users should call this function before getting actual final render target
@@ -728,6 +739,14 @@ tpl_surface_set_frontbuffer_mode(tpl_surface_t *surface, tpl_bool_t set);
 tpl_result_t
 tpl_surface_set_reset_cb(tpl_surface_t *surface,
 						 void* data, tpl_surface_cb_func_t reset_cb);
+
+/**
+ * Set rotation capability to the given tpl_surface
+ * @param surface surface used for set
+ * @param set TPL_TRUE if user want to set to enable / disable capability of rotation
+ */
+tpl_result_t
+tpl_surface_set_rotation_capability(tpl_surface_t *surface, tpl_bool_t set);
 
 /**
  * Present mode types.

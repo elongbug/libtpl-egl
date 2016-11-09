@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <wayland-client.h>
+#include <wayland-egl.h>
 
 struct wl_egl_window {
 	struct wl_surface *surface;
@@ -25,8 +26,12 @@ struct wl_egl_window {
 	int attached_width;
 	int attached_height;
 
+	wl_egl_window_rotation rotation;
+
 	void *private;
 	void (*resize_callback)(struct wl_egl_window *, void *);
+	void (*rotate_callback)(struct wl_egl_window *, void *);
+	int (*get_rotation_capability)(struct wl_egl_window *, void *);
 };
 
 #ifdef  __cplusplus

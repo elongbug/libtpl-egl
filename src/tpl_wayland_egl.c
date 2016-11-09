@@ -373,6 +373,14 @@ static void
 __cb_client_window_resize_callback(struct wl_egl_window *wl_egl_window,
 								   void *private);
 
+static void
+__cb_client_window_rotate_callback(struct wl_egl_window *wl_egl_window,
+								   void *private);
+
+static int
+__cb_client_window_get_rotation_capability(struct wl_egl_window *wl_egl_window,
+										   void *private);
+
 static TPL_INLINE void
 __tpl_wayland_egl_buffer_set_reset_flag(tpl_list_t *tracking_list)
 {
@@ -539,9 +547,13 @@ __tpl_wayland_egl_surface_init(tpl_surface_t *surface)
 
 	surface->width = wl_egl_window->width;
 	surface->height = wl_egl_window->height;
+	surface->rotation = wl_egl_window->rotation;
+	surface->rotation_capability = TPL_FALSE;
 
 	wl_egl_window->private = surface;
 	wl_egl_window->resize_callback = (void *)__cb_client_window_resize_callback;
+	wl_egl_window->rotate_callback = (void *)__cb_client_window_rotate_callback;
+	wl_egl_window->get_rotation_capability = (void *)__cb_client_window_get_rotation_capability;
 
 	/* tdm_vblank object decide to be maintained every tpl_wayland_egl_surface
 	   for the case where the several surfaces is created in one display connection. */
@@ -1211,6 +1223,41 @@ __cb_client_window_resize_callback(struct wl_egl_window *wl_egl_window,
 			|| (height != tbm_surface_queue_get_height(wayland_egl_surface->tbm_queue)))
 		wayland_egl_surface->resized = TPL_TRUE;
 }
+
+static void
+__cb_client_window_rotate_callback(struct wl_egl_window *wl_egl_window,
+								   void *private)
+{
+	TPL_ASSERT(private);
+	TPL_ASSERT(wl_egl_window);
+
+	int rotation;
+	tpl_surface_t *surface = (tpl_surface_t *)private;
+
+	rotation = wl_egl_window->rotation;
+
+	TPL_LOG_B("WL_EGL", "[ROTATE_CB] wl_egl_window(%p) (%d) -> (%d)",
+			  wl_egl_window, surface->rotation, rotation);
+	/* Check whether the surface was resized by wayland_egl */
+	surface->rotation = rotation;
+}
+
+static int
+__cb_client_window_get_rotation_capability(struct wl_egl_window *wl_egl_window,
+										   void *private)
+{
+	int rotation_capability = WL_EGL_WINDOW_CAPABILITY_NONE;
+	TPL_ASSERT(private);
+	TPL_ASSERT(wl_egl_window);
+	tpl_surface_t *surface = (tpl_surface_t *)private;
+	if (TPL_TRUE == surface->rotation_capability)
+		rotation_capability = WL_EGL_WINDOW_CAPABILITY_ROTATION_SUPPORTED;
+	else
+		rotation_capability = WL_EGL_WINDOW_CAPABILITY_ROTATION_UNSUPPORTED;
+
+	return rotation_capability;
+}
+
 
 void
 __cb_resistry_global_callback(void *data, struct wl_registry *wl_registry,

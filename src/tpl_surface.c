@@ -119,6 +119,18 @@ tpl_surface_get_size(tpl_surface_t *surface, int *width, int *height)
 	return TPL_ERROR_NONE;
 }
 
+tpl_result_t
+tpl_surface_get_rotation(tpl_surface_t *surface, int *rotation)
+{
+	if (!surface) {
+		TPL_ERR("Surface is NULL!");
+		return TPL_ERROR_INVALID_PARAMETER;
+	}
+
+	if (rotation) *rotation = surface->rotation;
+
+	return TPL_ERROR_NONE;
+}
 
 tpl_bool_t
 tpl_surface_validate(tpl_surface_t *surface)
@@ -424,4 +436,21 @@ tpl_surface_set_reset_cb(tpl_surface_t *surface, void *data, tpl_surface_cb_func
 	TPL_OBJECT_UNLOCK(surface);
 
 	return ret;
+}
+
+tpl_result_t
+tpl_surface_set_rotation_capability(tpl_surface_t *surface, tpl_bool_t set)
+{
+	if (!surface || (surface->type != TPL_SURFACE_TYPE_WINDOW)) {
+		TPL_ERR("Invalid surface!");
+		return TPL_ERROR_INVALID_PARAMETER;
+	}
+
+	TPL_OBJECT_LOCK(surface);
+
+	surface->rotation_capability = set;
+
+	TPL_OBJECT_UNLOCK(surface);
+
+	return TPL_ERROR_NONE;
 }
