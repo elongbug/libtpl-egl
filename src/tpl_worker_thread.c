@@ -384,6 +384,7 @@ __tpl_worker_thread_loop(void *arg)
 						switch (fence_result = tbm_sync_fence_wait(wait_fd, 0)) {
 							case 0:
 								TPL_ERR_ERRNO("sync_fence_wait return error.");
+								break;
 							case 1:
 								/* some time recieve event two times */
 								epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_fd, NULL);
@@ -418,9 +419,14 @@ cleanup:
 	if (tdm_client)
 		tdm_client_destroy(tdm_client);
 
-	close(epoll_fd);
-	close(tpl_worker_thread.event_fd);
-	tpl_worker_thread.event_fd = -1;
+	if (epoll_fd != -1) {
+		close(epoll_fd);
+		epoll_fd = -1;
+	}
+	if (tpl_worker_thread.event_fd != -1) {
+		close(tpl_worker_thread.event_fd);
+		tpl_worker_thread.event_fd = -1;
+	}
 
 	return NULL;
 }
