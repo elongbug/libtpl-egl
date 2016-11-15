@@ -64,7 +64,6 @@ struct _tpl_wayland_egl_buffer {
 };
 
 static const struct wl_callback_listener sync_listener;
-static const struct wl_callback_listener frame_listener;
 static const struct wl_buffer_listener buffer_release_listener;
 
 static int tpl_wayland_egl_buffer_key;
@@ -738,11 +737,6 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 		}
 	}
 
-	/* Register a meaningless surface frame callback.
-	   Because the buffer_release callback only be triggered if this callback is registered. */
-	frame_callback = wl_surface_frame(wl_egl_window->surface);
-	wl_callback_add_listener(frame_callback, &frame_listener, tbm_surface);
-
 	wl_surface_commit(wl_egl_window->surface);
 
 	wl_display_flush(wayland_egl_display->wl_dpy);
@@ -1155,23 +1149,6 @@ __cb_client_sync_callback(void *data, struct wl_callback *callback,
 
 static const struct wl_callback_listener sync_listener = {
 	__cb_client_sync_callback
-};
-
-static void
-__cb_client_frame_callback(void *data, struct wl_callback *callback,
-						   uint32_t time)
-{
-	/* We moved the buffer reclaim logic to buffer_release_callback().
-	   buffer_release_callback() is more suitable point to delete or reuse buffer instead of frame_callback().
-	   But we remain this callback because buffer_release_callback() works only when frame_callback() is activated.*/
-	TPL_IGNORE(data);
-	TPL_IGNORE(time);
-
-	wl_callback_destroy(callback);
-}
-
-static const struct wl_callback_listener frame_listener = {
-	__cb_client_frame_callback
 };
 
 static void
