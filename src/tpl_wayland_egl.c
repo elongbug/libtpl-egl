@@ -33,7 +33,6 @@ typedef struct _tpl_wayland_egl_surface tpl_wayland_egl_surface_t;
 typedef struct _tpl_wayland_egl_buffer tpl_wayland_egl_buffer_t;
 
 struct _tpl_wayland_egl_display {
-	tbm_bufmgr bufmgr;
 	struct wayland_tbm_client *wl_tbm_client;
 	struct wl_proxy *wl_tbm; /* wayland_tbm_client proxy */
 	tdm_client *tdm_client;
