@@ -694,7 +694,6 @@ __tpl_wayland_egl_surface_commit(tpl_surface_t *surface,
 	tpl_wayland_egl_buffer_t *wayland_egl_buffer = NULL;
 	struct wl_egl_window *wl_egl_window =
 		(struct wl_egl_window *)surface->native_handle;
-	struct wl_callback *frame_callback = NULL;
 	tpl_wayland_egl_display_t *wayland_egl_display =
 		(tpl_wayland_egl_display_t *) surface->display->backend.data;
 	tpl_wayland_egl_surface_t *wayland_egl_surface =
