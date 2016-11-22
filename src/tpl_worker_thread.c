@@ -237,7 +237,9 @@ __tpl_worker_prepare_event_fd(int epoll_fd)
 	return event_fd;
 }
 
-static tpl_bool_t
+/* FIXME: Temporarily added 'unused' attribute to suppress warning. */
+/*        Remove this attribute when you use this function.         */
+static tpl_bool_t __attribute__((unused))
 __tpl_worker_prepare_vblank(int epoll_fd, tdm_client **ret_client, tdm_client_vblank **ret_vblank)
 {
 	tdm_error tdm_err;
