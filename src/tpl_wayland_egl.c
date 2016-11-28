@@ -594,16 +594,6 @@ __tpl_wayland_egl_surface_fini(tpl_surface_t *surface)
 
 		wl_egl_window->private = NULL;
 
-		/* Detach all pending buffers */
-		if (wl_egl_window->surface &&
-				/* if-statement to be removed once evas/gl patch is in place */
-				wl_egl_window->width == wl_egl_window->attached_width &&
-				wl_egl_window->height == wl_egl_window->attached_height) {
-
-			wl_surface_attach(wl_egl_window->surface, NULL, 0, 0);
-			wl_surface_commit(wl_egl_window->surface);
-		}
-
 		wl_display_flush(wayland_egl_display->wl_dpy);
 		wl_display_dispatch_queue_pending(wayland_egl_display->wl_dpy,
 										  wayland_egl_display->wl_tbm_event_queue);
