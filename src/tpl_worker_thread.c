@@ -377,9 +377,7 @@ cont_epoll_wait:
 								if (surface->draw_done)
 									surface->draw_done(surface->surface,
 													   surface->draw_wait_buffer,
-													   fence_result == 1 ?
-													   TPL_ERROR_NONE :
-													   TPL_ERROR_INVALID_OPERATION);
+													   TPL_ERROR_NONE);
 								surface->draw_wait_buffer = NULL;
 								break;
 							case -1:
