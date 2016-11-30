@@ -117,12 +117,11 @@ __tpl_tbm_display_get_window_info(tpl_display_t *display, tpl_handle_t window,
 								  int *width, int *height, tbm_format *format,
 								  int depth, int a_size)
 {
-	TPL_ASSERT(display);
-	TPL_ASSERT(window);
+	TPL_IGNORE(display);
 
 	tbm_surface_queue_h surf_queue = (tbm_surface_queue_h)window;
 	if (!surf_queue) {
-		TPL_ERR("Native widow(%p) is invalid.", window);
+		TPL_ERR("Native window(%p) is invalid.", window);
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
 
