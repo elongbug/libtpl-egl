@@ -1255,7 +1255,7 @@ __tpl_wayland_egl_display_buffer_flusher_init(
 	}
 
 	registry = wl_display_get_registry(wayland_egl_display->wl_dpy);
-	if (!queue) {
+	if (!registry) {
 		TPL_ERR("Failed to create wl_registry");
 		goto fini;
 	}
