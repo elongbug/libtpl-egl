@@ -30,8 +30,8 @@ tpl_display_create(tpl_backend_type_t type, tpl_handle_t native_dpy)
 	/* Search for an already connected display for the given native display. */
 	display = __tpl_runtime_find_display(type, native_dpy);
 
-	/* If tpl_display already exists, then return NULL */
-	TPL_CHECK_ON_TRUE_RETURN_VAL(display, NULL);
+	/* If tpl_display already exists, then return it */
+	TPL_CHECK_ON_TRUE_RETURN_VAL(display, display);
 
 	/* if backend is unknown, try to find the best match from the list of supported types */
 	if (TPL_BACKEND_UNKNOWN == type)
