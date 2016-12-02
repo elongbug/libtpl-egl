@@ -80,7 +80,8 @@ TEST_F(TPLSurfaceSupport, tpl_surface_create_get_destroy_swapchain_test)
 
 	// Create swapchain
 	result = tpl_surface_create_swapchain(backend->tpl_surface,
-			 TBM_FORMAT_ARGB8888, config.width, config.height, buffer_set);
+			 TBM_FORMAT_ARGB8888, config.width, config.height, buffer_set,
+			 TPL_DISPLAY_PRESENT_MODE_IMMEDIATE);
 
 	// SUCCEED() if backend does not support operation
 	if (result == TPL_ERROR_INVALID_OPERATION) {
