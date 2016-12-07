@@ -162,6 +162,13 @@ export TPL_VER_MAJOR=%{TPL_VER_MAJOR}
 export TPL_VER_MINOR=%{TPL_VER_MINOR}
 export TPL_RELEASE=%{TPL_RELEASE}
 
+#wayland-vulkan build
+%if "%{TPL_WINSYS}" == "WL"
+cd src/wayland-vulkan
+make
+cd -
+%endif
+
 make all
 
 #libwayland-egl build
@@ -207,6 +214,11 @@ cp libwayland-egl.so.%{WL_EGL_VERSION} %{buildroot}%{_libdir}/libwayland-egl.so.
 cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/%{TZ_SYS_RO_SHARE}/license/libwayland-egl
 export WLD_EGL_SO_VER=%{WL_EGL_VERSION}
 %makeinstall
+cd -
+
+cd src/wayland-vulkan
+%makeinstall
+cd -
 %endif
 
 %post -p /sbin/ldconfig

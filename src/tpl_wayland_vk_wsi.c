@@ -11,6 +11,8 @@
 
 #include <tbm_sync.h>
 
+#include "wayland-vulkan/wayland-vulkan-client-protocol.h"
+
 #define CLIENT_QUEUE_SIZE 3
 
 #define USE_WORKER_THREAD
@@ -33,7 +35,9 @@ struct _tpl_wayland_vk_wsi_display {
 	struct {
 		int min_buffer;
 		int max_buffer;
+		int present_modes;
 	} surface_capabilities;
+	struct wayland_vulkan *wl_vk_client;
 };
 
 struct _tpl_wayland_vk_wsi_surface {
@@ -153,6 +157,56 @@ __tpl_wayland_vk_wsi_display_roundtrip(tpl_display_t *display)
 	return ret;
 }
 
+static void
+__tpl_wayland_vk_wsi_support_present_mode_listener(void *data,
+												   struct wayland_vulkan *wayland_vulkan,
+												   uint32_t mode)
+{
+	tpl_wayland_vk_wsi_display_t *wayland_vk_wsi_display = data;
+
+	switch (mode) {
+		case WAYLAND_VULKAN_PRESENT_MODE_TYPE_IMMEDIATE:
+			wayland_vk_wsi_display->surface_capabilities.present_modes
+				|= TPL_DISPLAY_PRESENT_MODE_IMMEDIATE;
+			break;
+		case WAYLAND_VULKAN_PRESENT_MODE_TYPE_MAILBOX:
+			wayland_vk_wsi_display->surface_capabilities.present_modes
+				|= TPL_DISPLAY_PRESENT_MODE_MAILBOX;
+			break;
+		case WAYLAND_VULKAN_PRESENT_MODE_TYPE_FIFO:
+			wayland_vk_wsi_display->surface_capabilities.present_modes
+				|= TPL_DISPLAY_PRESENT_MODE_FIFO;
+			break;
+		case WAYLAND_VULKAN_PRESENT_MODE_TYPE_FIFO_RELAXED:
+			wayland_vk_wsi_display->surface_capabilities.present_modes
+				|= TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED;
+			break;
+		default:
+			TPL_WARN("server sent unknown present type: %d", mode);
+	}
+}
+
+static struct wayland_vulkan_listener wl_vk_listener = {
+	__tpl_wayland_vk_wsi_support_present_mode_listener,
+};
+
+static void
+__tpl_wayland_vk_wsi_registry_handle_global(void *data, struct wl_registry *registry,
+											uint32_t name, const char *interface, uint32_t version)
+{
+	tpl_wayland_vk_wsi_display_t *wayland_vk_wsi_display = data;
+
+	if (!strcmp(interface, "wayland_vulkan")) {
+		wayland_vk_wsi_display->wl_vk_client =
+			wl_registry_bind(registry, name, &wayland_vulkan_interface, version);
+	}
+}
+
+static const struct wl_registry_listener registry_listener = {
+	__tpl_wayland_vk_wsi_registry_handle_global,
+	NULL
+};
+
 static tpl_result_t
 __tpl_wayland_vk_wsi_display_init(tpl_display_t *display)
 {
@@ -175,12 +229,16 @@ __tpl_wayland_vk_wsi_display_init(tpl_display_t *display)
 
 	wayland_vk_wsi_display->surface_capabilities.min_buffer = 2;
 	wayland_vk_wsi_display->surface_capabilities.max_buffer = CLIENT_QUEUE_SIZE;
+	wayland_vk_wsi_display->surface_capabilities.present_modes =
+		TPL_DISPLAY_PRESENT_MODE_MAILBOX;
 
 	display->backend.data = wayland_vk_wsi_display;
 
 	if (__tpl_wayland_vk_wsi_display_is_wl_display(display->native_handle)) {
 		struct wl_display *wl_dpy =
 			(struct wl_display *)display->native_handle;
+		struct wl_registry *wl_registry;
+
 		wayland_vk_wsi_display->wl_tbm_client =
 			wayland_tbm_client_init((struct wl_display *) wl_dpy);
 
@@ -188,6 +246,18 @@ __tpl_wayland_vk_wsi_display_init(tpl_display_t *display)
 			TPL_ERR("Wayland TBM initialization failed!");
 			goto free_wl_display;
 		}
+
+		wl_registry = wl_display_get_registry(wl_dpy);
+		/* check wl_registry */
+		wl_registry_add_listener(wl_registry, &registry_listener, wayland_vk_wsi_display);
+		wl_display_roundtrip(wl_dpy);
+
+		if (wayland_vk_wsi_display->wl_vk_client)
+			wayland_vulkan_add_listener(wayland_vk_wsi_display->wl_vk_client,
+										&wl_vk_listener, wayland_vk_wsi_display);
+
+		wl_display_roundtrip(wl_dpy);
+		wl_registry_destroy(wl_registry);
 	} else {
 		goto free_wl_display;
 	}
@@ -212,6 +282,8 @@ __tpl_wayland_vk_wsi_display_fini(tpl_display_t *display)
 	wayland_vk_wsi_display = (tpl_wayland_vk_wsi_display_t *)display->backend.data;
 	if (wayland_vk_wsi_display) {
 		wayland_tbm_client_deinit(wayland_vk_wsi_display->wl_tbm_client);
+		if (wayland_vk_wsi_display->wl_vk_client)
+			wayland_vulkan_destroy(wayland_vk_wsi_display->wl_vk_client);
 		free(wayland_vk_wsi_display);
 	}
 	display->backend.data = NULL;
@@ -292,7 +364,8 @@ __tpl_wayland_vk_wsi_display_query_window_supported_present_modes(
 	if (!wayland_vk_wsi_display) return TPL_ERROR_INVALID_OPERATION;
 
 	if (modes) {
-		*modes = TPL_DISPLAY_PRESENT_MODE_MAILBOX | TPL_DISPLAY_PRESENT_MODE_IMMEDIATE;
+		*modes = TPL_DISPLAY_PRESENT_MODE_MAILBOX | TPL_DISPLAY_PRESENT_MODE_IMMEDIATE |
+		wayland_vk_wsi_display->surface_capabilities.present_modes;
 #if USE_WORKER_THREAD == 1
 		if (__tpl_worker_support_vblank() == TPL_TRUE)
 			*modes |= TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED;
@@ -709,6 +782,7 @@ __tpl_wayland_vk_wsi_process_draw_done(tpl_surface_t *surface,
 {
 	tpl_wayland_vk_wsi_surface_t *wayland_vk_wsi_surface = NULL;
 	tpl_wayland_vk_wsi_buffer_t *wayland_vk_wsi_buffer = NULL;
+	tpl_wayland_vk_wsi_display_t *wayland_vk_wsi_display = NULL;
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(tbm_surface);
@@ -718,14 +792,23 @@ __tpl_wayland_vk_wsi_process_draw_done(tpl_surface_t *surface,
 		(tpl_wayland_vk_wsi_surface_t *)surface->backend.data;
 	wayland_vk_wsi_buffer =
 		__tpl_wayland_vk_wsi_get_wayland_buffer_from_tbm_surface(tbm_surface);
+	wayland_vk_wsi_display = (tpl_wayland_vk_wsi_display_t *)
+							 surface->display->backend.data;
 
 	TPL_ASSERT(wayland_vk_wsi_surface);
 	TPL_ASSERT(wayland_vk_wsi_buffer);
-
-	/* TODO: send buffer to server immediate when server support present mode */
+	TPL_ASSERT(wayland_vk_wsi_display);
 
 	close(wayland_vk_wsi_buffer->wait_sync);
 	wayland_vk_wsi_buffer->wait_sync = -1;
+
+	/* if server supported current supported mode then just send */
+
+	if (wayland_vk_wsi_surface->present_mode &
+		wayland_vk_wsi_display->surface_capabilities.present_modes) {
+		__tpl_wayland_vk_wsi_surface_commit_buffer(surface, tbm_surface);
+		return;
+	}
 
 	if (wayland_vk_wsi_surface->present_mode == TPL_DISPLAY_PRESENT_MODE_FIFO) {
 		pthread_mutex_lock(&wayland_vk_wsi_surface->vblank_list_mutex);
@@ -833,22 +916,25 @@ __tpl_wayland_vk_wsi_surface_create_swapchain(tpl_surface_t *surface,
 	/* FIXME: vblank has performance problem so replace all present mode to MAILBOX */
 	present_mode = TPL_DISPLAY_PRESENT_MODE_MAILBOX;
 
-	/* TODO: check server supported present modes */
-	switch (present_mode) {
+	if ((present_mode & wayland_vk_wsi_display->surface_capabilities.present_modes) == 0) {
+		/* server not supported current mode check client mode */
+		switch (present_mode) {
 #if USE_WORKER_THREAD == 1
-		case TPL_DISPLAY_PRESENT_MODE_FIFO:
-		case TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED:
-		if (__tpl_worker_support_vblank() == TPL_FALSE) {
-			TPL_ERR("Unsupported present mode: %d, worker not support vblank", present_mode);
-			return TPL_ERROR_INVALID_PARAMETER;
-		}
+			case TPL_DISPLAY_PRESENT_MODE_FIFO:
+			case TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED:
+				if (__tpl_worker_support_vblank() == TPL_FALSE) {
+					TPL_ERR("Unsupported present mode: %d, worker not support vblank",
+							present_mode);
+					return TPL_ERROR_INVALID_PARAMETER;
+				}
 #endif
-		case TPL_DISPLAY_PRESENT_MODE_MAILBOX:
-		case TPL_DISPLAY_PRESENT_MODE_IMMEDIATE:
-			break;
-		default:
-			TPL_ERR("Unsupported present mode: %d", present_mode);
-			return TPL_ERROR_INVALID_PARAMETER;
+			case TPL_DISPLAY_PRESENT_MODE_MAILBOX:
+			case TPL_DISPLAY_PRESENT_MODE_IMMEDIATE:
+				break;
+			default:
+				TPL_ERR("Unsupported present mode: %d", present_mode);
+				return TPL_ERROR_INVALID_PARAMETER;
+		}
 	}
 
 	wayland_vk_wsi_surface->present_mode = present_mode;

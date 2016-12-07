@@ -76,6 +76,7 @@ TPL_SRCS += $(SRC_DIR)/tpl_wayland_vk_wsi.c
 TPL_SRCS += $(SRC_DIR)/tpl_gbm.c
 TPL_SRCS += $(SRC_DIR)/protocol/tizen-surface-protocol.c
 TPL_SRCS += $(SRC_DIR)/tpl_worker_thread.c
+TPL_SRCS += $(SRC_DIR)/wayland-vulkan/wayland-vulkan-protocol.c
 endif
 
 ifneq ($(call is-feature-enabled,winsys_dri2),)
