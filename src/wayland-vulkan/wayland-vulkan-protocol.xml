@@ -1,0 +1,17 @@
+<protocol name="wayland_vulkan">
+	<interface name="wayland_vulkan" version="1">
+		<enum name="present_mode_type">
+			<entry name="IMMEDIATE" value="1"/>
+			<entry name="MAILBOX" value="2"/>
+			<entry name="FIFO" value="3"/>
+			<entry name="FIFO_RELAXED" value="4"/>
+		</enum>
+		<event name="supported_present_mode">
+			<arg name="mode" type="uint" />
+		</event>
+		<request name="set_present_mode">
+			<arg name="surface" type="object" interface="wl_surface" />
+			<arg name="mode" type="uint" />
+		</request>
+	</interface>
+</protocol>
