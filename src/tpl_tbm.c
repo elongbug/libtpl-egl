@@ -19,6 +19,7 @@ struct _tpl_tbm_display {
 
 struct _tpl_tbm_surface {
 	int dummy;
+	int present_mode;
 };
 
 static tpl_result_t
@@ -321,6 +322,102 @@ __tpl_tbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	return tbm_surface;
 }
 
+static tpl_result_t
+__tpl_tbm_surface_get_swapchain_buffers(tpl_surface_t *surface,
+		tbm_surface_h **buffers,
+		int *buffer_count)
+{
+	tbm_surface_h buffer = NULL;
+	tbm_surface_queue_h tbm_queue = NULL;
+	tbm_surface_h *swapchain_buffers = NULL;
+	tbm_surface_queue_error_e tsq_err;
+	tpl_result_t ret = TPL_ERROR_NONE;
+	int i, queue_size, dequeue_count = 0;
+
+	TPL_ASSERT(surface);
+	TPL_ASSERT(buffers);
+	TPL_ASSERT(buffer_count);
+
+	tbm_queue = (tbm_surface_queue_h)surface->native_handle;
+	TPL_ASSERT(tbm_queue);
+
+	queue_size = tbm_surface_queue_get_size(tbm_queue);
+	swapchain_buffers = (tbm_surface_h *)calloc(1, sizeof(tbm_surface_h) * queue_size);
+	if (!swapchain_buffers) {
+		TPL_ERR("Failed to allocate memory for buffers.");
+		return TPL_ERROR_OUT_OF_MEMORY;
+	}
+
+	for (i = 0; i < queue_size; i++) {
+		tsq_err = tbm_surface_queue_dequeue(tbm_queue, &buffer);
+		if (tsq_err != TBM_SURFACE_QUEUE_ERROR_NONE) {
+			TPL_ERR("Failed to get tbm_surface from tbm_surface_queue | tsq_err = %d",
+					tsq_err);
+			dequeue_count = i;
+			ret = TPL_ERROR_OUT_OF_MEMORY;
+			goto get_buffer_fail;
+		}
+		swapchain_buffers[i] = buffer;
+	}
+
+	for (i = 0 ; i < queue_size; i++) {
+		tsq_err = tbm_surface_queue_release(tbm_queue, swapchain_buffers[i]);
+		if (tsq_err != TBM_SURFACE_QUEUE_ERROR_NONE) {
+			TPL_ERR("Failed to release tbm_surface. | tsq_err = %d", tsq_err);
+			ret = TPL_ERROR_INVALID_OPERATION;
+			goto release_buffer_fail;
+		}
+	}
+
+	*buffers = swapchain_buffers;
+	*buffer_count = queue_size;
+	return TPL_ERROR_NONE;
+
+get_buffer_fail:
+	for (i = 0 ; i < dequeue_count ; i++) {
+		tsq_err = tbm_surface_queue_release(tbm_queue, swapchain_buffers[i]);
+		if (tsq_err != TBM_SURFACE_QUEUE_ERROR_NONE) {
+			TPL_ERR("Failed to release tbm_surface. | tsq_err = %d", tsq_err);
+			goto release_buffer_fail;
+		}
+	}
+
+release_buffer_fail:
+	free(swapchain_buffers);
+	return ret;
+
+}
+
+static tpl_result_t
+__tpl_tbm_surface_create_swapchain(tpl_surface_t *surface,
+		tbm_format format, int width,
+		int height, int buffer_count, int present_mode)
+{
+	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
+
+	TPL_ASSERT(surface);
+
+	tpl_tbm_surface = (tpl_tbm_surface_t *) surface->backend.data;
+	TPL_ASSERT(tpl_tbm_surface);
+
+	/* FIXME: vblank has performance problem so replace all present mode to MAILBOX */
+	present_mode = TPL_DISPLAY_PRESENT_MODE_MAILBOX;
+
+	/* TODO: check server supported present modes */
+	switch (present_mode) {
+		case TPL_DISPLAY_PRESENT_MODE_MAILBOX:
+		case TPL_DISPLAY_PRESENT_MODE_IMMEDIATE:
+			break;
+		default:
+			TPL_ERR("Unsupported present mode: %d", present_mode);
+			return TPL_ERROR_INVALID_PARAMETER;
+	}
+
+	tpl_tbm_surface->present_mode = present_mode;
+
+	return TPL_ERROR_NONE;
+}
+
 tpl_bool_t
 __tpl_display_choose_backend_tbm(tpl_handle_t native_dpy)
 {
@@ -336,6 +433,36 @@ __tpl_display_choose_backend_tbm(tpl_handle_t native_dpy)
 	if (bufmgr) tbm_bufmgr_deinit(bufmgr);
 
 	return ret;
+}
+
+static tpl_result_t
+__tpl_tbm_display_query_window_supported_buffer_count(
+	tpl_display_t *display,
+	tpl_handle_t window, int *min, int *max)
+{
+	TPL_ASSERT(display);
+
+	if (!display->backend.data) return TPL_ERROR_INVALID_OPERATION;
+
+	if (min) *min = 0;
+	if (max) *max = 0; /* 0 mean no limit in vulkan */
+
+	return TPL_ERROR_NONE;
+}
+
+static tpl_result_t
+__tpl_tbm_display_query_window_supported_present_modes(
+	tpl_display_t *display,
+	tpl_handle_t window, int *modes)
+{
+	TPL_ASSERT(display);
+
+	if (!display->backend.data) return TPL_ERROR_INVALID_OPERATION;
+
+	if (modes)
+		*modes = TPL_DISPLAY_PRESENT_MODE_MAILBOX | TPL_DISPLAY_PRESENT_MODE_IMMEDIATE;
+
+	return TPL_ERROR_NONE;
 }
 
 void
@@ -354,6 +481,11 @@ __tpl_display_init_backend_tbm(tpl_display_backend_t *backend)
 	backend->get_pixmap_info = __tpl_tbm_display_get_pixmap_info;
 	backend->get_buffer_from_native_pixmap =
 		__tpl_tbm_display_get_buffer_from_native_pixmap;
+	backend->query_window_supported_buffer_count =
+		__tpl_tbm_display_query_window_supported_buffer_count;
+	backend->query_window_supported_present_modes =
+		__tpl_tbm_display_query_window_supported_present_modes;
+
 }
 
 void
@@ -369,5 +501,8 @@ __tpl_surface_init_backend_tbm(tpl_surface_backend_t *backend)
 	backend->validate = __tpl_tbm_surface_validate;
 	backend->dequeue_buffer = __tpl_tbm_surface_dequeue_buffer;
 	backend->enqueue_buffer = __tpl_tbm_surface_enqueue_buffer;
+	backend->create_swapchain = __tpl_tbm_surface_create_swapchain;
+	backend->get_swapchain_buffers =
+		__tpl_tbm_surface_get_swapchain_buffers;
 }
 
