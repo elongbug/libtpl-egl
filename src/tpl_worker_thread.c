@@ -41,7 +41,6 @@ void
 __tpl_worker_surface_list_insert(tpl_worker_surface_t *surface)
 {
 	TPL_ASSERT(surface->surface);
-	TPL_ASSERT(surface->tbm_queue);
 
 	if (pthread_mutex_lock(&tpl_worker_thread.surface_mutex) != 0) {
 		TPL_ERR_ERRNO("surface list mutex lock failed");
@@ -93,6 +92,36 @@ __tpl_worker_prepare_draw_wait_buffer(int epoll_fd,
 {
 	if (surface->draw_wait_buffer)
 		return;
+
+	if (surface->draw_wait_buffer_get) {
+		int wait_fd = -1;
+		tbm_surface_h tbm_surface;
+
+		while ((tbm_surface = surface->draw_wait_buffer_get(surface->surface)) != NULL) {
+			if (surface->draw_wait_fd_get)
+				wait_fd = surface->draw_wait_fd_get(surface->surface, tbm_surface);
+
+			if (wait_fd != -1) {
+				struct epoll_event wait_fence_event;
+				int epoll_err;
+
+				wait_fence_event.events = EPOLLIN;
+				wait_fence_event.data.ptr = surface;
+				epoll_err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD,
+									  wait_fd,
+									  &wait_fence_event);
+				if (epoll_err == 0) {
+					surface->draw_wait_buffer = tbm_surface;
+					return;
+				}
+			} /* else can't(or not need) wait fence in poll */
+
+			if (surface->draw_done)
+				surface->draw_done(surface->surface, tbm_surface,
+								   TPL_ERROR_INVALID_OPERATION);
+		}
+		return;
+	}
 
 	while (tbm_surface_queue_can_acquire(surface->tbm_queue, 0)) {
 		tbm_surface_h tbm_surface = NULL;
