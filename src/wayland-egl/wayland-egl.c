@@ -78,29 +78,37 @@ wl_egl_window_resize(struct wl_egl_window *egl_window,
 
 WL_EGL_EXPORT struct wl_egl_window *
 wl_egl_window_create(struct wl_surface *surface,
-					 int width, int height)
+				int width, int height)
 {
 	struct wl_egl_window *egl_window;
 
-	if (width <= 0 || height <= 0) return NULL;
-	if (!surface) return NULL;
+	if (width <= 0 || height <= 0)
+		return NULL;
+	if (!surface)
+		return NULL;
 
-	egl_window = malloc(sizeof * egl_window);
+	egl_window = malloc(sizeof *egl_window);
 	if (!egl_window) {
 		WL_EGL_ERR("failed to allocate memory for egl_window");
 		return NULL;
 	}
 
 	egl_window->surface = surface;
-	egl_window->private = NULL;
+
 	egl_window->resize_callback = NULL;
 	wl_egl_window_resize(egl_window, width, height, 0, 0);
+
 	egl_window->attached_width  = 0;
 	egl_window->attached_height = 0;
+
 	egl_window->rotation = ROTATION_0;
 
+	egl_window->private = NULL;
+	egl_window->rotate_callback = NULL;
+	egl_window->get_rotation_capability = NULL;
+
 	WL_EGL_LOG(2, "surf:%10p WxH:%dx%d egl_win:%10p priv:%10p",
-			   surface, width, height, egl_window, egl_window->private);
+		   surface, width, height, egl_window, egl_window->private);
 
 	return egl_window;
 }
