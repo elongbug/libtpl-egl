@@ -1199,28 +1199,26 @@ static const struct wl_buffer_listener buffer_release_listener = {
 
 static void
 __cb_client_window_resize_callback(struct wl_egl_window *wl_egl_window,
-								   void *private)
+						void *private)
 {
 	TPL_ASSERT(private);
 	TPL_ASSERT(wl_egl_window);
 
-	int width, height;
+	int cur_w, cur_h, req_w, req_h;
 	tpl_surface_t *surface = (tpl_surface_t *)private;
-	tpl_wayland_egl_surface_t *wayland_egl_surface = (tpl_wayland_egl_surface_t *)
-			surface->backend.data;
+	tpl_wayland_egl_surface_t *wayland_egl_surface =
+		(tpl_wayland_egl_surface_t *)surface->backend.data;
 
-	width = wl_egl_window->width;
-	height = wl_egl_window->height;
+	cur_w = tbm_surface_queue_get_width(wayland_egl_surface->tbm_queue);
+	cur_h = tbm_surface_queue_get_height(wayland_egl_surface->tbm_queue);
+	req_w = wl_egl_window->width;
+	req_h = wl_egl_window->height;
 
 	TPL_LOG_B("WL_EGL", "[RESIZE_CB] wl_egl_window(%p) (%dx%d) -> (%dx%d)",
-			  wl_egl_window,
-			  tbm_surface_queue_get_width(wayland_egl_surface->tbm_queue),
-			  tbm_surface_queue_get_height(wayland_egl_surface->tbm_queue),
-			  width,
-			  height);
+			wl_egl_window, cur_w, cur_h, req_w, req_h);
+
 	/* Check whether the surface was resized by wayland_egl */
-	if ((width != tbm_surface_queue_get_width(wayland_egl_surface->tbm_queue))
-			|| (height != tbm_surface_queue_get_height(wayland_egl_surface->tbm_queue)))
+	if ((req_w != cur_w) || (req_h != cur_h))
 		wayland_egl_surface->resized = TPL_TRUE;
 }
 
