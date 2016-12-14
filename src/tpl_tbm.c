@@ -107,6 +107,9 @@ __tpl_tbm_display_init(tpl_display_t *display)
 	display->backend.data = tbm_display;
 	display->bufmgr_fd = -1;
 
+	TPL_LOG_B("TBM", "[INIT] tpl_display(%p) tpl_tbm_display_t(%p) tbm_bufmgr(%p)",
+			  display, tbm_display, display->native_handle);
+
 	return TPL_ERROR_NONE;
 }
 
@@ -119,6 +122,8 @@ __tpl_tbm_display_fini(tpl_display_t *display)
 
 	tbm_display = (tpl_tbm_display_t *)display->backend.data;
 
+	TPL_LOG_B("TBM", "[FINI] tpl_display(%p) tpl_tbm_display_t(%p) tbm_bufmgr(%p)",
+			  display, tbm_display, display->native_handle);
 	display->backend.data = NULL;
 
 	if (tbm_display) {
@@ -449,6 +454,9 @@ __tpl_tbm_surface_init(tpl_surface_t *surface)
 										 __tpl_tbm_surface_queue_notify_cb,
 										 surface);
 
+		TPL_LOG_B("TBM", "[INIT] tpl_surface(%p) tpl_tbm_surface_t(%p) tbm_surface_queue(%p)",
+				  surface, tpl_tbm_surface, surface->native_handle);
+
 		return TPL_ERROR_NONE;
 	} else if (surface->type == TPL_SURFACE_TYPE_PIXMAP) {
 		if (__tpl_tbm_display_get_pixmap_info(surface->display,
@@ -487,6 +495,9 @@ __tpl_tbm_surface_fini(tpl_surface_t *surface)
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
+
+	TPL_LOG_B("TBM", "[FINI] tpl_surface(%p) tpl_tbm_surface_t(%p) native_handle(%p)",
+			  surface, surface->backend.data, surface->native_handle);
 
 	if (surface->type == TPL_SURFACE_TYPE_PIXMAP)
 		tbm_surface_internal_unref((tbm_surface_h)surface->native_handle);
@@ -562,6 +573,10 @@ __tpl_tbm_surface_enqueue_buffer(tpl_surface_t *surface,
 		}
 	}
 
+	TPL_LOG_B("TBM", "[ENQ] tpl_surface(%p) tbm_queue(%p) tbm_surface(%p) bo(%d)",
+			  surface, tbm_queue, tbm_surface,
+			  tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
+
 	return TPL_ERROR_NONE;
 }
 
@@ -617,6 +632,10 @@ __tpl_tbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	/* Inc ref count about tbm_surface */
 	/* It will be dec when before tbm_surface_queue_enqueue called */
 	tbm_surface_internal_ref(tbm_surface);
+
+	TPL_LOG_B("TBM", "[DEQ] tpl_surface(%p) tbm_queue(%p) tbm_surface(%p) bo(%d)",
+			  surface, tbm_queue, tbm_surface,
+			  tbm_bo_export(tbm_surface_internal_get_bo(tbm_surface, 0)));
 
 	return tbm_surface;
 }
