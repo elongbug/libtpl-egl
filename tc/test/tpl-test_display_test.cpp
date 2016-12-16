@@ -9,34 +9,45 @@
 #include "src/tpl-test_base.h"
 
 
-class TPLDisplay : public TPLTestBase {};
-class TPLDisplaySupport : public TPLDisplay {};
+typedef TPLTestBase DEFAULT_tpl_display_get;
 
-
-// Tests tpl_display_get(tpl_handle_t)
-TEST_F(TPLDisplay, tpl_display_get)
+TEST_F(DEFAULT_tpl_display_get, success)
 {
 	tpl_display_t *tpl_display = tpl_display_get(backend->display_handle);
 
-	ASSERT_EQ(tpl_display, backend->tpl_display);
+	ASSERT_EQ(backend->tpl_display, tpl_display);
+}
+
+TEST_F(DEFAULT_tpl_display_get, failure_null)
+{
+	tpl_display_t *tpl_display = tpl_display_get(NULL);
+
+	ASSERT_EQ((void *)NULL, tpl_display);
 }
 
 
-// Tests tpl_display_get_native_handle(tpl_handle_t)
-TEST_F(TPLDisplay, tpl_display_get_native_handle)
+typedef TPLTestBase DEFAULT_tpl_display_get_native_handle;
+
+TEST_F(DEFAULT_tpl_display_get_native_handle, success)
 {
 	tpl_handle_t display_handle =
 		tpl_display_get_native_handle(backend->tpl_display);
 
-	ASSERT_EQ(display_handle, backend->display_handle);
+	ASSERT_EQ(backend->display_handle, display_handle);
+}
+
+TEST_F(DEFAULT_tpl_display_get_native_handle, failure_invalid_display)
+{
+	tpl_handle_t display_handle =
+		tpl_display_get_native_handle(NULL);
+
+	ASSERT_EQ((void *)NULL, display_handle);
 }
 
 
-// Tests tpl_display_query_config(...)
-//
-// 1. Tests with normal cases
-// 2. Tests with abnormal case
-TEST_F(TPLDisplay, tpl_display_query_config)
+typedef TPLTestBase DEFAULT_tpl_display_query_config;
+
+TEST_F(DEFAULT_tpl_display_query_config, success_1)
 {
 	tpl_result_t result;
 
@@ -53,6 +64,11 @@ TEST_F(TPLDisplay, tpl_display_query_config)
 									  NULL);
 
 	ASSERT_EQ(TPL_ERROR_NONE, result);
+}
+
+TEST_F(DEFAULT_tpl_display_query_config, success_2)
+{
+	tpl_result_t result;
 
 	// #2: Normal case
 	// Expected Value: TPL_ERROR_NONE
@@ -67,6 +83,11 @@ TEST_F(TPLDisplay, tpl_display_query_config)
 									  NULL);
 
 	ASSERT_EQ(TPL_ERROR_NONE, result);
+}
+
+TEST_F(DEFAULT_tpl_display_query_config, failure_invalid_parameter_R)
+{
+	tpl_result_t result;
 
 	// #3: Abnormal case
 	// Expected Value: not TPL_ERROR_NONE
@@ -84,29 +105,40 @@ TEST_F(TPLDisplay, tpl_display_query_config)
 }
 
 
-// Tests tpl_display_filter_config(...)
-TEST_F(TPLDisplay, tpl_display_filter_config)
+typedef TPLTestBase DEFAULT_tpl_display_filter_config;
+
+TEST_F(DEFAULT_tpl_display_filter_config, success)
 {
 	tpl_result_t result;
 	int test_visual_id = GBM_FORMAT_ARGB8888;
 	result = tpl_display_filter_config(backend->tpl_display,
-			 &test_visual_id, 0);
+									   &test_visual_id, 0);
 
-	// Expected Value: TPL_ERROR_NONE
 	ASSERT_EQ(TPL_ERROR_NONE, result);
 }
 
+TEST_F(DEFAULT_tpl_display_filter_config, failure_invalid_display)
+{
+	tpl_result_t result;
+	int test_visual_id = GBM_FORMAT_ARGB8888;
+	result = tpl_display_filter_config(NULL, &test_visual_id, 0);
 
-// Tests tpl_display_get_native_window_info(...)
-TEST_F(TPLDisplay, tpl_display_get_native_window_info)
+	ASSERT_EQ(TPL_ERROR_INVALID_PARAMETER, result);
+}
+
+
+typedef TPLTestBase DEFAULT_tpl_display_get_native_window_info;
+
+TEST_F(DEFAULT_tpl_display_get_native_window_info, success)
 {
 	tpl_result_t result;
 	int width, height;
 	tbm_format format;
 
 	result = tpl_display_get_native_window_info(backend->tpl_display,
-			 backend->surface_handle, &width, &height, &format,
-			 config.depth, 8);
+												backend->surface_handle,
+												&width, &height, &format,
+												config.depth, 8);
 
 	EXPECT_EQ(config.width, width);
 	EXPECT_EQ(config.height, height);
@@ -115,16 +147,19 @@ TEST_F(TPLDisplay, tpl_display_get_native_window_info)
 	ASSERT_EQ(TPL_ERROR_NONE, result);
 }
 
+/* TODO: Make test - DEFAULT_tpl_display_get_native_window_info, failure */
 
-TEST_F(TPLDisplaySupport,
-	   tpl_display_query_supported_buffer_count_from_native_window)
+typedef TPLTestBase
+EXTRA_tpl_display_query_supported_buffer_count_from_native_window;
+
+TEST_F(EXTRA_tpl_display_query_supported_buffer_count_from_native_window,
+	   success)
 {
 	tpl_result_t result;
 	int min, max;
 
 	result = tpl_display_query_supported_buffer_count_from_native_window(
-			 backend->tpl_display, backend->surface_handle,
-			 &min, &max);
+				 backend->tpl_display, backend->surface_handle, &min, &max);
 
 	// SUCCEED() if backend does not support operation
 	if (result == TPL_ERROR_INVALID_OPERATION) {
