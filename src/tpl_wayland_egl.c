@@ -941,8 +941,24 @@ __tpl_wayland_egl_surface_wait_dequeuable(tpl_surface_t *surface)
 		/* Application sent all buffers to the server. Wait for server response. */
 		if (wl_display_dispatch_queue(wayland_egl_display->wl_dpy,
 									  wayland_egl_display->wl_tbm_event_queue) == -1) {
+			int dpy_err;
+			char buf[1024];
+			strerror_r(errno, buf, sizeof(buf));
+
+			TPL_ERR("falied to wl_display_dispatch_queue. error:%d(%s)", errno,
+					buf);
+
+			dpy_err = wl_display_get_error(wayland_egl_display->wl_dpy);
+			if (dpy_err == EPROTO) {
+				const struct wl_interface *err_interface;
+				uint32_t err_proxy_id, err_code;
+				err_code = wl_display_get_protocol_error(wayland_egl_display->wl_dpy,
+														 &err_interface, &err_proxy_id);
+				TPL_ERR("[Protocol Error] interface: %s, error_code: %d, proxy_id: %d",
+						err_interface->name, err_code, err_proxy_id);
+			}
+
 			ret = TPL_ERROR_INVALID_OPERATION;
-			TPL_ERR("falied to wl_display_dispatch_queue.");
 			break;
 		}
 	}
