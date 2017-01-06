@@ -26,6 +26,7 @@ struct wl_egl_window {
 	int attached_width;
 	int attached_height;
 
+	int resize_requested;
 	wl_egl_window_rotation rotation;
 
 	void *private;

@@ -67,6 +67,7 @@ wl_egl_window_resize(struct wl_egl_window *egl_window,
 	egl_window->height = height;
 	egl_window->dx     = dx;
 	egl_window->dy     = dy;
+	egl_window->resize_requested = 1;
 
 	if (egl_window->resize_callback)
 		egl_window->resize_callback(egl_window, egl_window->private);
@@ -96,6 +97,7 @@ wl_egl_window_create(struct wl_surface *surface,
 	egl_window->surface = surface;
 
 	egl_window->resize_callback = NULL;
+	egl_window->resize_requested = 0;
 	wl_egl_window_resize(egl_window, width, height, 0, 0);
 
 	egl_window->attached_width  = 0;
@@ -145,6 +147,7 @@ wl_egl_window_set_rotation(struct wl_egl_window *egl_window,
 						   wl_egl_window_rotation rotation)
 {
 	int resize = 0;
+	wl_egl_window_rotation prev_rotation;
 
 	if (egl_window == NULL) {
 		WL_EGL_ERR("egl_window is NULL");
@@ -156,15 +159,23 @@ wl_egl_window_set_rotation(struct wl_egl_window *egl_window,
 		return;
 	}
 
+	if (egl_window->resize_requested) {
+		prev_rotation = ROTATION_0;
+		egl_window->resize_requested = 0;
+	}
+	else {
+		prev_rotation = egl_window->rotation;
+	}
+
 	switch (rotation) {
 		case ROTATION_0:
 		case ROTATION_180:
-			if (egl_window->rotation == ROTATION_90 || egl_window->rotation == ROTATION_270)
+			if (prev_rotation == ROTATION_90 || prev_rotation == ROTATION_270)
 				resize = 1;
 			break;
 		case ROTATION_90:
 		case ROTATION_270:
-			if (egl_window->rotation == ROTATION_0 || egl_window->rotation == ROTATION_180)
+			if (prev_rotation == ROTATION_0 || prev_rotation == ROTATION_180)
 				resize = 1;
 			break;
 		default:
