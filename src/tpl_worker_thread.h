@@ -17,6 +17,7 @@ struct __tpl_worker_surface {
 	int (*draw_wait_fd_get)(tpl_surface_t *surface, tbm_surface_h tbm_surface);
 	void (*vblank)(tpl_surface_t *surface, unsigned int sequence, unsigned int tv_sec,
 				   unsigned int tv_usec);
+	tbm_surface_h (*draw_wait_buffer_get)(tpl_surface_t *surface);
 
 	tbm_surface_h draw_wait_buffer;
 };
