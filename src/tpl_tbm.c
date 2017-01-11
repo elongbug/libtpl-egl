@@ -507,8 +507,10 @@ __tpl_tbm_surface_fini(tpl_surface_t *surface)
 
 	if (surface->type == TPL_SURFACE_TYPE_PIXMAP)
 		tbm_surface_internal_unref((tbm_surface_h)surface->native_handle);
-
-	if (surface->type == TPL_SURFACE_TYPE_WINDOW) {
+	else if (surface->type == TPL_SURFACE_TYPE_WINDOW) {
+		tbm_surface_queue_remove_destroy_cb(
+			(tbm_surface_queue_h)surface->native_handle,
+			 __tpl_tbm_surface_queue_notify_cb, surface);
 		/*TODO: we need fix for dequeued surface*/
 	}
 
