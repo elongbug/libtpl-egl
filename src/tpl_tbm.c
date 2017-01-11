@@ -9,8 +9,22 @@
 #include <tbm_surface_internal.h>
 #include <tbm_surface_queue.h>
 
+#define USE_WORKER_THREAD
+#ifndef USE_WORKER_THREAD
+#define USE_WORKER_THREAD 0
+#else
+#include "tpl_worker_thread.h"
+#include <pthread.h>
+#include <time.h>
+#undef USE_WORKER_THREAD
+#define USE_WORKER_THREAD 1
+#endif
+
 typedef struct _tpl_tbm_display tpl_tbm_display_t;
 typedef struct _tpl_tbm_surface tpl_tbm_surface_t;
+#if USE_WORKER_THREAD == 1
+typedef struct _tpl_tbm_buffer tpl_tbm_buffer_t;
+#endif
 
 struct _tpl_tbm_display {
 	int need_dpy_deinit;
@@ -18,9 +32,71 @@ struct _tpl_tbm_display {
 };
 
 struct _tpl_tbm_surface {
-	int dummy;
+#if USE_WORKER_THREAD == 1
+	/* tbm_surface list */
+	tpl_list_t vblank_list;
+	pthread_mutex_t vblank_list_mutex;
+
+	tpl_list_t draw_waiting_queue;
+	pthread_mutex_t draw_waiting_mutex;
+
+	tpl_bool_t vblank_done;
+
+	tpl_worker_surface_t worker_surface;
+
+	tpl_bool_t need_worker_clear;
+#endif
 	int present_mode;
 };
+
+#if USE_WORKER_THREAD == 1
+struct _tpl_tbm_buffer {
+	tbm_fd wait_sync;
+};
+
+static int tpl_tbm_buffer_key;
+#define KEY_tpl_tbm_buffer  (unsigned long)(&tpl_tbm_buffer_key)
+
+static void
+__tpl_tbm_buffer_free(tpl_tbm_buffer_t *tbm_buffer)
+{
+	TPL_ASSERT(tbm_buffer);
+	if (tbm_buffer->wait_sync != -1)
+		close(tbm_buffer->wait_sync);
+	free(tbm_buffer);
+}
+
+static void
+__tpl_tbm_buffer_remove_from_list(void *data)
+{
+	tbm_surface_h tbm_surface = data;
+	tbm_surface_internal_unref(tbm_surface);
+}
+
+static TPL_INLINE tpl_tbm_buffer_t *
+__tpl_tbm_get_tbm_buffer_from_tbm_surface(tbm_surface_h surface)
+{
+	tpl_tbm_buffer_t *buf = NULL;
+
+	if (!tbm_surface_internal_is_valid(surface))
+		return NULL;
+
+	tbm_surface_internal_get_user_data(surface, KEY_tpl_tbm_buffer,
+									   (void **)&buf);
+	return buf;
+}
+
+static TPL_INLINE void
+__tpl_tbm_set_tbm_buffer_to_tbm_surface(tbm_surface_h surface,
+										tpl_tbm_buffer_t *buf)
+{
+	tbm_surface_internal_add_user_data(surface,
+									   KEY_tpl_tbm_buffer,
+									   (tbm_data_free)__tpl_tbm_buffer_free);
+	tbm_surface_internal_set_user_data(surface,
+									   KEY_tpl_tbm_buffer, buf);
+}
+#endif
 
 static tpl_result_t
 __tpl_tbm_display_init(tpl_display_t *display)
@@ -165,6 +241,202 @@ __tpl_tbm_surface_queue_notify_cb(tbm_surface_queue_h surface_queue, void *data)
 	/* Do something */
 }
 
+#if USE_WORKER_THREAD == 1
+static void
+__tpl_tbm_draw_done(tpl_surface_t *surface, tbm_surface_h tbm_surface, tpl_result_t result)
+{
+	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
+	tpl_tbm_buffer_t *tpl_tbm_buffer = NULL;
+	tbm_surface_queue_h tbm_queue = NULL;
+
+	TPL_ASSERT(surface);
+	TPL_ASSERT(tbm_surface);
+	TPL_ASSERT(tbm_surface_internal_is_valid(tbm_surface));
+
+	tpl_tbm_surface = (tpl_tbm_surface_t *)surface->backend.data;
+	tpl_tbm_buffer = __tpl_tbm_get_tbm_buffer_from_tbm_surface(tbm_surface);
+	tbm_queue = (tbm_surface_queue_h)surface->native_handle;
+
+	TPL_ASSERT(tpl_tbm_surface);
+	TPL_ASSERT(tpl_tbm_buffer);
+	TPL_ASSERT(tbm_queue);
+
+	close(tpl_tbm_buffer->wait_sync);
+	tpl_tbm_buffer->wait_sync = -1;
+
+	/* if server supported current supported mode then just send */
+
+	if (tpl_tbm_surface->present_mode == TPL_DISPLAY_PRESENT_MODE_FIFO) {
+		pthread_mutex_lock(&tpl_tbm_surface->vblank_list_mutex);
+		/* unref in tpl list remove callback
+		   (__tpl_tbm_buffer_remove_from_list) */
+		tbm_surface_internal_ref(tbm_surface);
+		__tpl_list_push_back(&tpl_tbm_surface->vblank_list, tbm_surface);
+		pthread_mutex_unlock(&tpl_tbm_surface->vblank_list_mutex);
+	} else if (tpl_tbm_surface->present_mode == TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED &&
+			   tpl_tbm_surface->vblank_done == TPL_FALSE) {
+		/* if can't process previous vblank event, send buffer immediately */
+		pthread_mutex_lock(&tpl_tbm_surface->vblank_list_mutex);
+		/* unref in tpl list remove callback
+		   (__tpl_tbm_buffer_remove_from_list) */
+		tbm_surface_internal_ref(tbm_surface);
+		__tpl_list_push_back(&tpl_tbm_surface->vblank_list, tbm_surface);
+		tpl_tbm_surface->vblank_done = TPL_TRUE;
+		pthread_mutex_unlock(&tpl_tbm_surface->vblank_list_mutex);
+	} else {
+		tbm_surface_internal_unref(tbm_surface);
+		if (tbm_surface_queue_enqueue(tbm_queue, tbm_surface) != TBM_SURFACE_QUEUE_ERROR_NONE) {
+			TPL_ERR("tbm_surface_queue_enqueue failed. tbm_queue(%p) tbm_surface(%p)",
+					tbm_queue, tbm_surface);
+		}
+	}
+}
+
+static int
+__tpl_tbm_draw_wait_fd_get(tpl_surface_t *surface, tbm_surface_h tbm_surface)
+{
+	tpl_tbm_buffer_t *tpl_tbm_buffer;
+
+	TPL_ASSERT(tbm_surface);
+	TPL_ASSERT(tbm_surface_internal_is_valid(tbm_surface));
+
+	tpl_tbm_buffer = __tpl_tbm_get_tbm_buffer_from_tbm_surface(tbm_surface);
+	return tpl_tbm_buffer->wait_sync;
+}
+
+static void
+__tpl_tbm_vblank(tpl_surface_t *surface, unsigned int sequence, unsigned int tv_sec,
+				 unsigned int tv_usec)
+{
+	tpl_tbm_surface_t *tpl_tbm_surface;
+	tbm_surface_h tbm_surface;
+
+	TPL_ASSERT(surface);
+
+	tpl_tbm_surface = (tpl_tbm_surface_t *)surface->backend.data;
+
+	TPL_ASSERT(tpl_tbm_surface);
+
+	if ((tpl_tbm_surface->present_mode &
+		 (TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED)) == 0)
+		return;
+
+	pthread_mutex_lock(&tpl_tbm_surface->vblank_list_mutex);
+	tbm_surface = __tpl_list_pop_front(&tpl_tbm_surface->vblank_list,
+									   __tpl_tbm_buffer_remove_from_list);
+	pthread_mutex_unlock(&tpl_tbm_surface->vblank_list_mutex);
+
+	 if (tbm_surface_internal_is_valid(tbm_surface)) {
+		 tbm_surface_queue_h tbm_queue = (tbm_surface_queue_h)surface->native_handle;
+		 if (tbm_surface_queue_enqueue(tbm_queue, tbm_surface) != TBM_SURFACE_QUEUE_ERROR_NONE) {
+			TPL_ERR("tbm_surface_queue_enqueue failed. tbm_queue(%p) tbm_surface(%p)",
+					tbm_queue, tbm_surface);
+		}
+		tpl_tbm_surface->vblank_done = TPL_TRUE;
+	} else {
+		tpl_tbm_surface->vblank_done = TPL_FALSE;
+	}
+
+}
+
+static tbm_surface_h
+__tpl_tbm_draw_wait_buffer_get(tpl_surface_t *surface)
+{
+	tpl_tbm_surface_t *tpl_tbm_surface;
+	tbm_surface_h tbm_surface;
+
+	tpl_tbm_surface = surface->backend.data;
+	pthread_mutex_init(&tpl_tbm_surface->draw_waiting_mutex, NULL);
+	tbm_surface = __tpl_list_pop_front(&tpl_tbm_surface->draw_waiting_queue, NULL);
+	pthread_mutex_unlock(&tpl_tbm_surface->draw_waiting_mutex);
+
+	return tbm_surface;
+}
+#endif
+
+static tpl_result_t
+__tpl_tbm_surface_create_swapchain(tpl_surface_t *surface,
+		tbm_format format, int width,
+		int height, int buffer_count, int present_mode)
+{
+	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
+
+	TPL_ASSERT(surface);
+
+	tpl_tbm_surface = (tpl_tbm_surface_t *) surface->backend.data;
+	TPL_ASSERT(tpl_tbm_surface);
+
+	/* FIXME: vblank has performance problem so replace all present mode to MAILBOX */
+	present_mode = TPL_DISPLAY_PRESENT_MODE_MAILBOX;
+
+	/* TODO: check server supported present modes */
+	switch (present_mode) {
+		case TPL_DISPLAY_PRESENT_MODE_MAILBOX:
+		case TPL_DISPLAY_PRESENT_MODE_IMMEDIATE:
+			break;
+#if USE_WORKER_THREAD == 1
+		case TPL_DISPLAY_PRESENT_MODE_FIFO:
+		case TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED:
+			if (__tpl_worker_support_vblank() == TPL_FALSE) {
+				TPL_ERR("Unsupported present mode: %d, worker not support vblank",
+						present_mode);
+				return TPL_ERROR_INVALID_PARAMETER;
+			}
+#endif
+		default:
+			TPL_ERR("Unsupported present mode: %d", present_mode);
+			return TPL_ERROR_INVALID_PARAMETER;
+	}
+
+	tpl_tbm_surface->present_mode = present_mode;
+
+#if USE_WORKER_THREAD == 1
+	tpl_tbm_surface->worker_surface.surface = surface;
+	tpl_tbm_surface->worker_surface.draw_done = __tpl_tbm_draw_done;
+	tpl_tbm_surface->worker_surface.draw_wait_fd_get = __tpl_tbm_draw_wait_fd_get;
+	tpl_tbm_surface->worker_surface.vblank = __tpl_tbm_vblank;
+	tpl_tbm_surface->worker_surface.draw_wait_buffer_get = __tpl_tbm_draw_wait_buffer_get;
+
+	__tpl_list_init(&tpl_tbm_surface->vblank_list);
+	__tpl_list_init(&tpl_tbm_surface->draw_waiting_queue);
+	pthread_mutex_init(&tpl_tbm_surface->vblank_list_mutex, NULL);
+	pthread_mutex_init(&tpl_tbm_surface->draw_waiting_mutex, NULL);
+
+	__tpl_worker_surface_list_insert(&tpl_tbm_surface->worker_surface);
+	tpl_tbm_surface->need_worker_clear = TPL_TRUE;
+#endif
+
+	return TPL_ERROR_NONE;
+}
+
+#if USE_WORKER_THREAD == 1
+static tpl_result_t
+__tpl_tbm_surface_destroy_swapchain(tpl_surface_t *surface)
+{
+	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
+
+	TPL_ASSERT(surface);
+
+	tpl_tbm_surface = (tpl_tbm_surface_t *) surface->backend.data;
+	TPL_ASSERT(tpl_tbm_surface);
+
+	__tpl_worker_surface_list_remove(&tpl_tbm_surface->worker_surface);
+
+	pthread_mutex_lock(&tpl_tbm_surface->vblank_list_mutex);
+	__tpl_list_fini(&tpl_tbm_surface->vblank_list, NULL);
+	pthread_mutex_unlock(&tpl_tbm_surface->vblank_list_mutex);
+	pthread_mutex_destroy(&tpl_tbm_surface->vblank_list_mutex);
+
+	pthread_mutex_lock(&tpl_tbm_surface->draw_waiting_mutex);
+	__tpl_list_fini(&tpl_tbm_surface->draw_waiting_queue, NULL);
+	pthread_mutex_unlock(&tpl_tbm_surface->draw_waiting_mutex);
+	pthread_mutex_destroy(&tpl_tbm_surface->draw_waiting_mutex);
+	tpl_tbm_surface->need_worker_clear = TPL_FALSE;
+
+	return TPL_ERROR_NONE;
+}
+#endif
+
 static tpl_result_t
 __tpl_tbm_surface_init(tpl_surface_t *surface)
 {
@@ -218,6 +490,18 @@ error:
 static void
 __tpl_tbm_surface_fini(tpl_surface_t *surface)
 {
+#if USE_WORKER_THREAD == 1
+	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
+
+	TPL_ASSERT(surface);
+
+	tpl_tbm_surface = (tpl_tbm_surface_t *) surface->backend.data;
+	TPL_ASSERT(tpl_tbm_surface);
+
+	if (tpl_tbm_surface->need_worker_clear)
+		__tpl_tbm_surface_destroy_swapchain(surface);
+#endif
+
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
 
@@ -237,6 +521,13 @@ __tpl_tbm_surface_enqueue_buffer(tpl_surface_t *surface,
 								 tbm_surface_h tbm_surface, int num_rects,
 								 const int *rects, tbm_fd sync_fence)
 {
+#if USE_WORKER_THREAD == 1
+	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
+	tpl_tbm_buffer_t *tpl_tbm_buffer = NULL;
+#else
+	tbm_surface_queue_h tbm_queue;
+#endif
+
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
 	TPL_ASSERT(surface->display->native_handle);
@@ -256,8 +547,19 @@ __tpl_tbm_surface_enqueue_buffer(tpl_surface_t *surface,
 				surface->native_handle);
 		return TPL_ERROR_INVALID_PARAMETER;
 	}
+#if USE_WORKER_THREAD == 1
+	tpl_tbm_surface = surface->backend.data;
 
-	tbm_surface_queue_h tbm_queue = (tbm_surface_queue_h)surface->native_handle;
+	tpl_tbm_buffer = __tpl_tbm_get_tbm_buffer_from_tbm_surface(tbm_surface);
+	tpl_tbm_buffer->wait_sync = sync_fence;
+
+	tbm_surface_internal_ref(tbm_surface);
+	pthread_mutex_init(&tpl_tbm_surface->draw_waiting_mutex, NULL);
+	__tpl_list_push_back(&tpl_tbm_surface->draw_waiting_queue, tbm_surface);
+	pthread_mutex_unlock(&tpl_tbm_surface->draw_waiting_mutex);
+	__tpl_worker_new_buffer_notify(&tpl_tbm_surface->worker_surface);
+#else
+	tbm_queue = (tbm_surface_queue_h)surface->native_handle;
 
 	if (!tbm_queue) {
 		TPL_ERR("tbm_surface_queue is invalid.");
@@ -275,6 +577,7 @@ __tpl_tbm_surface_enqueue_buffer(tpl_surface_t *surface,
 				tbm_queue, tbm_surface);
 		return TPL_ERROR_INVALID_OPERATION;
 	}
+#endif
 
 	return TPL_ERROR_NONE;
 }
@@ -294,6 +597,9 @@ __tpl_tbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 	tbm_surface_h tbm_surface = NULL;
 	tbm_surface_queue_h tbm_queue = NULL;
 	tbm_surface_queue_error_e tsq_err = 0;
+#if USE_WORKER_THREAD == 1
+	tpl_tbm_buffer_t *tpl_tbm_buffer = NULL;
+#endif
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->native_handle);
@@ -314,6 +620,16 @@ __tpl_tbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 			return NULL;
 		}
 	}
+
+#if USE_WORKER_THREAD == 1
+	if ((tpl_tbm_buffer =__tpl_tbm_get_tbm_buffer_from_tbm_surface(tbm_surface)) == NULL) {
+		tpl_tbm_buffer = (tpl_tbm_buffer_t *) calloc(1, sizeof(tpl_tbm_buffer_t));
+		if (!tpl_tbm_buffer) {
+			TPL_ERR("Mem alloc for tpl_tbm_buffer failed!");
+			return NULL;
+		}
+	}
+#endif
 
 	/* Inc ref count about tbm_surface */
 	/* It will be dec when before tbm_surface_queue_enqueue called */
@@ -388,36 +704,6 @@ release_buffer_fail:
 
 }
 
-static tpl_result_t
-__tpl_tbm_surface_create_swapchain(tpl_surface_t *surface,
-		tbm_format format, int width,
-		int height, int buffer_count, int present_mode)
-{
-	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
-
-	TPL_ASSERT(surface);
-
-	tpl_tbm_surface = (tpl_tbm_surface_t *) surface->backend.data;
-	TPL_ASSERT(tpl_tbm_surface);
-
-	/* FIXME: vblank has performance problem so replace all present mode to MAILBOX */
-	present_mode = TPL_DISPLAY_PRESENT_MODE_MAILBOX;
-
-	/* TODO: check server supported present modes */
-	switch (present_mode) {
-		case TPL_DISPLAY_PRESENT_MODE_MAILBOX:
-		case TPL_DISPLAY_PRESENT_MODE_IMMEDIATE:
-			break;
-		default:
-			TPL_ERR("Unsupported present mode: %d", present_mode);
-			return TPL_ERROR_INVALID_PARAMETER;
-	}
-
-	tpl_tbm_surface->present_mode = present_mode;
-
-	return TPL_ERROR_NONE;
-}
-
 tpl_bool_t
 __tpl_display_choose_backend_tbm(tpl_handle_t native_dpy)
 {
@@ -459,8 +745,14 @@ __tpl_tbm_display_query_window_supported_present_modes(
 
 	if (!display->backend.data) return TPL_ERROR_INVALID_OPERATION;
 
-	if (modes)
+	if (modes) {
 		*modes = TPL_DISPLAY_PRESENT_MODE_MAILBOX | TPL_DISPLAY_PRESENT_MODE_IMMEDIATE;
+#if USE_WORKER_THREAD == 1
+		if (__tpl_worker_support_vblank() == TPL_TRUE)
+			*modes |= TPL_DISPLAY_PRESENT_MODE_FIFO | TPL_DISPLAY_PRESENT_MODE_FIFO_RELAXED;
+#endif
+	}
+
 
 	return TPL_ERROR_NONE;
 }
@@ -502,6 +794,9 @@ __tpl_surface_init_backend_tbm(tpl_surface_backend_t *backend)
 	backend->dequeue_buffer = __tpl_tbm_surface_dequeue_buffer;
 	backend->enqueue_buffer = __tpl_tbm_surface_enqueue_buffer;
 	backend->create_swapchain = __tpl_tbm_surface_create_swapchain;
+#if USE_WORKER_THREAD == 1
+	backend->destroy_swapchain = __tpl_tbm_surface_destroy_swapchain;
+#endif
 	backend->get_swapchain_buffers =
 		__tpl_tbm_surface_get_swapchain_buffers;
 }
