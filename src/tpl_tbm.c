@@ -346,7 +346,7 @@ __tpl_tbm_draw_wait_buffer_get(tpl_surface_t *surface)
 	tbm_surface_h tbm_surface;
 
 	tpl_tbm_surface = surface->backend.data;
-	pthread_mutex_init(&tpl_tbm_surface->draw_waiting_mutex, NULL);
+	pthread_mutex_lock(&tpl_tbm_surface->draw_waiting_mutex);
 	tbm_surface = __tpl_list_pop_front(&tpl_tbm_surface->draw_waiting_queue, NULL);
 	pthread_mutex_unlock(&tpl_tbm_surface->draw_waiting_mutex);
 
@@ -630,6 +630,7 @@ __tpl_tbm_surface_dequeue_buffer(tpl_surface_t *surface, uint64_t timeout_ns,
 			TPL_ERR("Mem alloc for tpl_tbm_buffer failed!");
 			return NULL;
 		}
+		__tpl_tbm_set_tbm_buffer_to_tbm_surface(tbm_surface, tpl_tbm_buffer);
 	}
 #endif
 
