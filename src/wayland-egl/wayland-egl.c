@@ -58,23 +58,53 @@ wl_egl_window_resize(struct wl_egl_window *egl_window,
 					 int width, int height,
 					 int dx, int dy)
 {
+	int prev_width, prev_height;
+	wl_egl_window_rotation rotation;
+
 	if (egl_window == NULL) {
 		WL_EGL_ERR("egl_window is NULL");
 		return;
 	}
 
-	egl_window->width  = width;
-	egl_window->height = height;
-	egl_window->dx     = dx;
-	egl_window->dy     = dy;
-	egl_window->resize_requested = 1;
+	egl_window->dx = dx;
+	egl_window->dy = dy;
+
+	rotation = egl_window->rotation;
+	switch (rotation) {
+		case ROTATION_0:
+		case ROTATION_180:
+		default:
+			prev_width  = egl_window->width;
+			prev_height = egl_window->height;
+			break;
+		case ROTATION_90:
+		case ROTATION_270:
+			prev_width  = egl_window->height;
+			prev_height = egl_window->width;
+			break;
+	}
+	if ((prev_width == width) && (prev_height == height)) return;
+
+	switch (rotation) {
+		case ROTATION_0:
+		case ROTATION_180:
+		default:
+			egl_window->width  = width;
+			egl_window->height = height;
+			break;
+		case ROTATION_90:
+		case ROTATION_270:
+			egl_window->width  = height;
+			egl_window->height = width;
+			break;
+	}
 
 	if (egl_window->resize_callback)
 		egl_window->resize_callback(egl_window, egl_window->private);
 
 	WL_EGL_LOG(2, "egl_win:%10p WxH:%dx%d dx:%d dy:%d rsz_cb:%10p",
-			   egl_window, egl_window->width, egl_window->height,
-			   egl_window->dx, egl_window->dy, egl_window->resize_callback);
+			   egl_window, width, height, egl_window->dx, egl_window->dy,
+			   egl_window->resize_callback);
 }
 
 WL_EGL_EXPORT struct wl_egl_window *
@@ -97,7 +127,6 @@ wl_egl_window_create(struct wl_surface *surface,
 	egl_window->surface = surface;
 
 	egl_window->resize_callback = NULL;
-	egl_window->resize_requested = 0;
 	wl_egl_window_resize(egl_window, width, height, 0, 0);
 
 	egl_window->attached_width  = 0;
@@ -159,14 +188,7 @@ wl_egl_window_set_rotation(struct wl_egl_window *egl_window,
 		return;
 	}
 
-	if (egl_window->resize_requested) {
-		prev_rotation = ROTATION_0;
-		egl_window->resize_requested = 0;
-	}
-	else {
-		prev_rotation = egl_window->rotation;
-	}
-
+	prev_rotation = egl_window->rotation;
 	switch (rotation) {
 		case ROTATION_0:
 		case ROTATION_180:
@@ -191,9 +213,11 @@ wl_egl_window_set_rotation(struct wl_egl_window *egl_window,
 	if (egl_window->rotate_callback)
 		egl_window->rotate_callback(egl_window, egl_window->private);
 
-	if (resize) {
-		wl_egl_window_resize(egl_window, egl_window->height, egl_window->width,
-							 egl_window->dx, egl_window->dy);
+	if ((resize == 1) && (egl_window->resize_callback != NULL)) {
+		int temp = egl_window->width;
+		egl_window->width = egl_window->height;
+		egl_window->height = temp;
+		egl_window->resize_callback(egl_window, egl_window->private);
 	}
 }
 
