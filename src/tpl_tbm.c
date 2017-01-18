@@ -9,7 +9,7 @@
 #include <tbm_surface_internal.h>
 #include <tbm_surface_queue.h>
 
-#define USE_WORKER_THREAD
+//#define USE_WORKER_THREAD
 #ifndef USE_WORKER_THREAD
 #define USE_WORKER_THREAD 0
 #else
