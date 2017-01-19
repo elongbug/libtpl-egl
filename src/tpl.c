@@ -227,6 +227,8 @@ __tpl_display_choose_backend(tpl_handle_t native_dpy)
 #endif
 #ifdef TPL_WINSYS_WL
 		if (strcmp(plat_name, "tbm") == 0) return TPL_BACKEND_TBM;
+		if (strcmp(plat_name, "tbm_vulkan_wsi") == 0) return
+				TPL_BACKEND_TBM_VULKAN_WSI;
 		if (strcmp(plat_name, "wayland") == 0) return TPL_BACKEND_WAYLAND;
 		if (strcmp(plat_name, "wayland_vulkan_wsi") == 0) return
 				TPL_BACKEND_WAYLAND_VULKAN_WSI;
@@ -273,7 +275,10 @@ __tpl_display_init_backend(tpl_display_t *display, tpl_backend_type_t type)
 		__tpl_display_init_backend_wayland_vk_wsi(&display->backend);
 		break;
 	case TPL_BACKEND_TBM:
-		__tpl_display_init_backend_tbm(&display->backend);
+		__tpl_display_init_backend_tbm(&display->backend, type);
+		break;
+	case TPL_BACKEND_TBM_VULKAN_WSI:
+		__tpl_display_init_backend_tbm(&display->backend, type);
 		break;
 #endif
 #ifdef TPL_WINSYS_DRI2
@@ -309,7 +314,10 @@ __tpl_surface_init_backend(tpl_surface_t *surface, tpl_backend_type_t type)
 		__tpl_surface_init_backend_wayland_vk_wsi(&surface->backend);
 		break;
 	case TPL_BACKEND_TBM:
-		__tpl_surface_init_backend_tbm(&surface->backend);
+		__tpl_surface_init_backend_tbm(&surface->backend, type);
+		break;
+	case TPL_BACKEND_TBM_VULKAN_WSI:
+		__tpl_surface_init_backend_tbm(&surface->backend, type);
 		break;
 #endif
 #ifdef TPL_WINSYS_DRI2

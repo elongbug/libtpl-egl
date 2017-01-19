@@ -206,13 +206,15 @@ void __tpl_display_init_backend(tpl_display_t *display,
 void __tpl_surface_init_backend(tpl_surface_t *surface,
 								tpl_backend_type_t type);
 void __tpl_display_init_backend_gbm(tpl_display_backend_t *backend);
-void __tpl_display_init_backend_tbm(tpl_display_backend_t *backend);
+void __tpl_display_init_backend_tbm(tpl_display_backend_t *backend,
+									tpl_backend_type_t type);
 void __tpl_display_init_backend_wayland_egl(tpl_display_backend_t *backend);
 void __tpl_display_init_backend_wayland_vk_wsi(tpl_display_backend_t *backend);
 void __tpl_display_init_backend_x11_dri2(tpl_display_backend_t *backend);
 void __tpl_display_init_backend_x11_dri3(tpl_display_backend_t *backend);
 void __tpl_surface_init_backend_gbm(tpl_surface_backend_t *backend);
-void __tpl_surface_init_backend_tbm(tpl_surface_backend_t *backend);
+void __tpl_surface_init_backend_tbm(tpl_surface_backend_t *backend,
+									tpl_backend_type_t type);
 void __tpl_surface_init_backend_wayland_egl(tpl_surface_backend_t *backend);
 void __tpl_surface_init_backend_wayland_vk_wsi(tpl_surface_backend_t *backend);
 void __tpl_surface_init_backend_x11_dri2(tpl_surface_backend_t *backend);
