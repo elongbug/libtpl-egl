@@ -7,39 +7,24 @@ tpl-test is the test module for testing libtpl-egl frontend APIs
 GBS Build Instruction
 ---------------------
 
-* Build libtpl-egl:
-  $ gbs build -A armv7l --spec=libtpl-egl.spec
-
-* Build tpl-test:
-  $ gbs build -A armv7l --spec=tpl-test.spec
-
-* Build all:
+- Build libtpl-egl:
   $ gbs build -A armv7l
 
+- Build libtpl-egl with tpl-test:
+  Change the value of 'ENABLE_TPL_TEST' from 0 to 1 in libtpl-egl.spec
+  Then, build like below
 
-Install Instruction
--------------------
-
-* Install
-  $ rpm -ivh tpl-test-0.3.0-0.armv7l.rpm
-  (file name can be different with version change)
-
-  then tpl-test binary file will be installed on
-  /opt/usr/tpl-test/
-
-
-* Uninstall
-  $ rpm -e tpl-test
+  $ gbs build -A armv7l --include-all
 
 
 Run Tests
 ---------
 
-* Run
+- Run
   $ cd /opt/usr/tpl-test
   $ ./tpl-test
 
 
-* Run with configuration
+- Run with configuration
   $ ./tpl-test --config.width=720 --config.height=1280 --config.depth=24
 

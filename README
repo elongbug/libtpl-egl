@@ -5,11 +5,12 @@ GBS Build Instruction
 ---------------------
 
 - Build libtpl-egl:
-  $ gbs build -A armv7l --spec=libtpl-egl.spec
-
-- Build tpl-test:
-  $ gbs build -A armv7l --spec=tpl-test.spec
-
-- Build all:
   $ gbs build -A armv7l
+
+- Build libtpl-egl with tpl-test:
+  Change the value of 'ENABLE_TPL_TEST' from 0 to 1 in libtpl-egl.spec
+  Then, build like below
+
+  $ gbs build -A armv7l --include-all
+
 

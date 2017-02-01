@@ -14,6 +14,10 @@
 %define ENABLE_DEFAULT_LOG	0
 %define ENABLE_DEFAULT_DUMP	0
 %define ENABLE_OBJECT_HASH_CHECK	1
+
+#TPL INSTALL OPTION
+%define ENABLE_TPL_TEST	0
+
 #WAYLAND-EGL VERSION MACROS
 %define WL_EGL_VERSION	1.0.0
 
@@ -42,7 +46,8 @@ Summary:	Tizen Porting Layer for EGL (DRI3 backend)
 Summary:	Tizen Porting Layer for EGL (Wayland backend)
 %endif
 Group: Graphics & UI Framework/GL
-License:	MIT
+# The entire source code is MIT except tc/libs/gtest/ which is BSD-3-Clause
+License:	MIT and BSD-3-Clause
 Source:		%{name}-%{version}.tar.gz
 
 BuildRequires:	cmake
@@ -179,6 +184,13 @@ make
 cd ../../
 %endif
 
+#tpl-test build
+%if "%{ENABLE_TPL_TEST}" == "1"
+cd tc/
+make
+cd ../
+%endif
+
 #pkgconfig configure
 cd pkgconfig
 cmake .
@@ -221,6 +233,16 @@ cd src/wayland-vulkan
 cd -
 %endif
 
+#tpl-test install
+%if "%{ENABLE_TPL_TEST}" == "1"
+mkdir -p %{buildroot}/opt/usr/tpl-test
+cp -arp ./tc/tpl-test %{buildroot}/opt/usr/tpl-test
+
+# License of Google Test which is BSD-3-Clause
+mkdir -p %{buildroot}/%{TZ_SYS_RO_SHARE}/license
+cp -a %{_builddir}/%{buildsubdir}/tc/libs/gtest/googletest/LICENSE %{buildroot}/%{TZ_SYS_RO_SHARE}/license/googletest
+%endif
+
 %post -p /sbin/ldconfig
 %postun -p /sbin/ldconfig
 
@@ -237,6 +259,15 @@ cd -
 %{_libdir}/libtpl-egl.so.%{TPL_VER_MAJOR}
 %{_libdir}/libtpl-egl.so.%{TPL_VERSION}
 %{_libdir}/libtpl-egl.so.%{TPL_VER_FULL}
+
+#tpl-test files
+%if "%{ENABLE_TPL_TEST}" == "1"
+%dir /opt/usr/tpl-test/
+/opt/usr/tpl-test/tpl-test
+
+# License of Google Test which is BSD-3-Clause
+%{TZ_SYS_RO_SHARE}/license/googletest
+%endif
 
 %files devel
 %defattr(-,root,root,-)
