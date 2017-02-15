@@ -869,6 +869,26 @@ __tpl_wayland_egl_surface_enqueue_buffer(tpl_surface_t *surface,
 		 */
 		tbm_surface_internal_unref(tbm_surface);
 	} else {
+		/*
+		 * If tbm_surface is valid but it is not tracked by tbm_surface_queue,
+		 * tbm_surface_queue_enqueue will return below value.
+		 * TBM_SURFACE_QUEUE_ERROR_UNKNOWN_SURFACE
+		 * It means tbm_surface_queue has been reset before client try
+		 * to enqueue this tbm_surface.
+		 * We should commit this buffer to display to assure the latest frame.
+		 *
+		 * In enlightenment(E20) of TIZEN platform, depending on
+		 * some situation(Activate, Deactivate), the compositor may or may not
+		 * display the last forcibly commited buffer in this way.
+		 *
+		 * In this situation, the compositor's display policy may vary from
+		 * server to server.
+		 */
+		if (tsq_err == TBM_SURFACE_QUEUE_ERROR_UNKNOWN_SURFACE) {
+			__tpl_wayland_egl_surface_commit(surface, tbm_surface,
+											 num_rects, rects);
+			return TPL_ERROR_NONE;
+		}
 
 		TPL_ERR("Failed to enqeueue tbm_surface(%p). | tsq_err = %d",
 				tbm_surface, tsq_err);
