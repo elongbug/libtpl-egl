@@ -53,27 +53,25 @@ tpl_test_parse_arguments(int argc, char **argv)
 
 	// Parse arguments
 	int opt;
-	do {
-		opt = getopt_long_only(argc, argv, "", longopts, NULL);
-
+	while ((opt = getopt_long_only(argc, argv, "", longopts, NULL)) != -1) {
 		if (opt == 'h') {
 			tpl_test_print_help();
 			return config;
+		} else if (opt_width == 1) {
+			printf("Width set: %s\n", optarg);
+			config.width = atoi(optarg);
+			opt_width = 0;
+		} else if (opt_height == 1) {
+			printf("Height set: %s\n", optarg);
+			config.height = atoi(optarg);
+			opt_height = 0;
+		} else if (opt_depth == 1) {
+			printf("Depth set: %s\n", optarg);
+			config.depth = atoi(optarg);
+			opt_depth = 0;
+		} else {
+			break;
 		}
-	} while (opt != -1 && opt != '?');
-
-	// Set Config
-	if (opt_width == 1) {
-		printf("width set: %s\n", optarg);
-		config.width = atoi(optarg);
-	}
-	if (opt_height == 1) {
-		printf("height set: %s\n", optarg);
-		config.height = atoi(optarg);
-	}
-	if (opt_depth == 1) {
-		printf("depth set: %s\n", optarg);
-		config.depth = atoi(optarg);
 	}
 
 	return config;
