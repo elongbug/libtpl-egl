@@ -215,15 +215,11 @@ ln -sf libtpl-egl.so.%{TPL_VER_MAJOR}	%{buildroot}%{_libdir}/libtpl-egl.so
 cp -a src/tpl.h				%{buildroot}%{_includedir}/
 cp -a pkgconfig/tpl-egl.pc		%{buildroot}%{_libdir}/pkgconfig/
 
-mkdir -p %{buildroot}/%{TZ_SYS_RO_SHARE}/license
-cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/%{TZ_SYS_RO_SHARE}/license/%{name}
-
 %if "%{TPL_WINSYS}" == "WL"
 cd src/wayland-egl
 cp libwayland-egl.so.%{WL_EGL_VERSION} %{buildroot}%{_libdir}/libwayland-egl.so
 cp libwayland-egl.so.%{WL_EGL_VERSION} %{buildroot}%{_libdir}/libwayland-egl.so.1
 cp libwayland-egl.so.%{WL_EGL_VERSION} %{buildroot}%{_libdir}/libwayland-egl.so.1.0
-cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/%{TZ_SYS_RO_SHARE}/license/libwayland-egl
 export WLD_EGL_SO_VER=%{WL_EGL_VERSION}
 %makeinstall
 cd -
@@ -239,8 +235,8 @@ mkdir -p %{buildroot}/opt/usr/tpl-test
 cp -arp ./tc/tpl-test %{buildroot}/opt/usr/tpl-test
 
 # License of Google Test which is BSD-3-Clause
-mkdir -p %{buildroot}/%{TZ_SYS_RO_SHARE}/license
-cp -a %{_builddir}/%{buildsubdir}/tc/libs/gtest/googletest/LICENSE %{buildroot}/%{TZ_SYS_RO_SHARE}/license/googletest
+mkdir -p %{buildroot}/%{TZ_SYS_RO_SHARE}/licenses/googletest
+cp -a %{_builddir}/%{buildsubdir}/tc/libs/gtest/googletest/LICENSE %{buildroot}/%{TZ_SYS_RO_SHARE}/licenses/googletest/LICENSE
 %endif
 
 %post -p /sbin/ldconfig
@@ -253,7 +249,7 @@ cp -a %{_builddir}/%{buildsubdir}/tc/libs/gtest/googletest/LICENSE %{buildroot}/
 
 %files
 %manifest packaging/libtpl-egl.manifest
-%{TZ_SYS_RO_SHARE}/license/%{name}
+%license COPYING
 %defattr(-,root,root,-)
 %{_libdir}/libtpl-egl.so
 %{_libdir}/libtpl-egl.so.%{TPL_VER_MAJOR}
@@ -266,7 +262,7 @@ cp -a %{_builddir}/%{buildsubdir}/tc/libs/gtest/googletest/LICENSE %{buildroot}/
 /opt/usr/tpl-test/tpl-test
 
 # License of Google Test which is BSD-3-Clause
-%{TZ_SYS_RO_SHARE}/license/googletest
+%{TZ_SYS_RO_SHARE}/licenses/googletest/LICENSE
 %endif
 
 %files devel
@@ -277,7 +273,7 @@ cp -a %{_builddir}/%{buildsubdir}/tc/libs/gtest/googletest/LICENSE %{buildroot}/
 %if "%{TPL_WINSYS}" == "WL"
 %files -n libwayland-egl
 %manifest packaging/libwayland-egl.manifest
-%{TZ_SYS_RO_SHARE}/license/libwayland-egl
+%license COPYING
 %defattr(-,root,root,-)
 %{_libdir}/libwayland-egl.so
 %{_libdir}/libwayland-egl.so.1
