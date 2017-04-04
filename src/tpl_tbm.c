@@ -519,7 +519,7 @@ __tpl_tbm_surface_enqueue_buffer(tpl_surface_t *surface,
 {
 	tpl_tbm_surface_t *tpl_tbm_surface = NULL;
 	tpl_tbm_buffer_t *tpl_tbm_buffer = NULL;
-	tbm_surface_queue_h tbm_queue;
+	tbm_surface_queue_h tbm_queue = NULL;
 
 	TPL_ASSERT(surface);
 	TPL_ASSERT(surface->display);
